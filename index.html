@@ -1012,6 +1012,17 @@ function loanDefaults(){
   const kl=find(/køkkenlån/i);if(kl)add(kl,'Køkkenlån');
   st.loans=L;markDirty('settings');
 }
+/* Fri bil: skattepligtig værdi pr. år = sats % af beregningsgrundlag + miljøtillæg (× grøn ejerafgift pr. år).
+   Grundlag: nyvognspris de første 36 mdr., derefter 75 % af bilens værdi, mindst 160.000 kr. Satser 2026: 22,5 % og ×7 – tjek på skat.dk. */
+function ejerYear(){const c=S.settings.cats.find(x=>/ejerafgift/i.test(x.name));if(!c)return 0;let s=0;for(let m=1;m<=12;m++)s+=budgetFor(c,m,TODAY.getFullYear());return s}
+function fbCalc(){const po=payoffObj();const val=po.carNew?(+po.carNewPrice||0):(+po.price||0);if(!val)return {value:0,grundlag:0,miljo:0};
+  const grundlag=po.carNew?val:Math.max(160000,val*0.75);const pct=po.fbPct!=null?+po.fbPct:22.5;const mult=po.fbMult!=null?+po.fbMult:7;const ejer=po.ejer!=null?+po.ejer:ejerYear();
+  const miljo=ejer*mult;return {value:Math.round(grundlag*pct/100+miljo),grundlag,miljo,pct,mult,ejer}}
+function fbPerson(){const t=S.settings.tax;if(!t||!t.persons.length)return null;const po=payoffObj();return t.persons.find(p=>p.id===po.fbPerson)||t.persons[0]}
+/* fri bil for en person: eget tal i Løn & skat, ellers beregnet i Lån-fanen (kun for den valgte person) */
+function fbFor(p){if(p.fribil!=null&&p.fribil!=='')return +p.fribil||0;const fp=fbPerson();return fp&&fp.id===p.id?fbCalc().value:0}
+/* fri bil gælder fra salgsmåneden */
+function fbActive(y,m){const po=payoffObj();const k=y+'-'+pad(m);return !po.month||k>=po.month}
 const poFribil=()=>{const po=payoffObj();return po.fribil!=null?+po.fribil:fribilTax()};
 function payoffObj(){const st=S.settings;return st.payoff=st.payoff||{month:addM(CUR,2),price:null,saleCost:0,stopCats:[],fribil:null,incCat:'',applied:null}}
 /* månedlig simulering: rente pr. måned = årsrente/12; ydelse omregnet til pr. måned */
@@ -1086,6 +1097,16 @@ function vLaan(){
   const inc=st.cats.filter(c=>G(c.g).type==='income');
   h+='<section class="panel"><h2>Firmabil</h2><p class="sub">Når bilen bliver firmabil, betaler firmaet driften. Vælg, hvilke poster der stopper fra '+mLabel(po.month,true)+', og skriv skatten af fri bil – eller lad feltet stå tomt, så bruges beløbet fra Løn &amp; skat. Den skattepligtige værdi af bilen får du hos firmaet eller i SKATs beregner.</p><div class="chips" style="margin-top:10px">'+
     (carCats.length?carCats.map(c=>'<label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-po="stop" value="'+c.id+'"'+((po.stopCats||[]).includes(c.id)?' checked':'')+'> '+esc(c.name)+' <span class="muted num">'+kr(curPay(c))+'</span></label>').join(''):'<span class="muted">Ingen bilposter fundet.</span>')+'</div>'+
+    (()=>{const fb=fbCalc();const t=S.settings.tax;const fp=fbPerson();const n=v=>v==null?'':esc(String(v).replace('.',','));
+   return '<div class="lnres" style="margin-top:12px;display:flex;flex-direction:column;gap:10px"><span class="label">Beregning af fri bil</span><div class="lnf">'+
+   '<label class="row" style="gap:6px"><input type="checkbox" data-po="carNew"'+(po.carNew?' checked':'')+'> Bilen er under 3 år (brug nyvognspris)</label>'+
+   (po.carNew?'<label class="field"><span class="label">Nyvognspris</span><input class="inp num" inputmode="decimal" data-po="carNewPrice" value="'+(po.carNewPrice?nf0.format(po.carNewPrice):'')+'" placeholder="0"></label>':'<div class="field"><span class="label">Bilens værdi</span><span class="num">'+kr(+po.price||0)+' (salgsprisen)</span></div>')+
+   '<label class="field"><span class="label">Grøn ejerafgift pr. år</span><input class="inp num" inputmode="decimal" data-po="ejer" value="'+(po.ejer!=null?nf0.format(po.ejer):'')+'" placeholder="'+nf0.format(ejerYear())+' fra budgettet"></label>'+
+   '<label class="field"><span class="label">Sats % af grundlag</span><input class="inp num" inputmode="decimal" data-po="fbPct" value="'+n(po.fbPct)+'" placeholder="22,5"></label>'+
+   '<label class="field"><span class="label">Miljøtillæg × ejerafgift</span><input class="inp num" inputmode="decimal" data-po="fbMult" value="'+n(po.fbMult)+'" placeholder="7"></label>'+
+   (t&&t.persons.length>1?'<label class="field"><span class="label">Fri bil hos</span><select class="inp" data-po="fbPerson">'+t.persons.map(p=>'<option value="'+p.id+'"'+(fp&&fp.id===p.id?' selected':'')+'>'+esc(p.name)+'</option>').join('')+'</select></label>':'')+'</div>'+
+   (fb.value?'<div>Grundlag '+kr(fb.grundlag)+(po.carNew?'':' (75 % af værdien, mindst 160.000)')+' × '+String(fb.pct).replace('.',',')+' % + miljøtillæg '+kr(fb.miljo)+' = <b>skattepligtig værdi '+kr(fb.value)+' pr. år</b>'+(fp?' · '+(fp.fribil!=null?'<span class="neg">'+esc(fp.name)+' har sit eget tal under Løn &amp; skat – slet det for at bruge denne beregning</span>':'bruges under Løn &amp; skat for '+esc(fp.name)+' fra '+mLabel(po.month,true)):' · udfyld Løn &amp; skat for at se skatten')+'</div>':'<div class="muted">Skriv salgsprisen øverst, så regnes fri bil ud.</div>')+
+   '<div class="muted" style="font-size:12.5px">Satser for 2026: 22,5 % af grundlaget og 700 % af ejerafgiften. De kan ændre sig fra år til år – tjek på skat.dk.</div></div>'})()+
     '<div class="lnf" style="margin-top:12px"><label class="field"><span class="label">Skat af fri bil pr. md</span><input class="inp num" inputmode="decimal" data-po="fribil" value="'+(po.fribil!=null?nf0.format(po.fribil):'')+'" placeholder="'+(fribilTax()?'beregnet '+nf0.format(fribilTax()):'0')+'"></label>'+
     (loans.some(l=>l.viaLon)?'<label class="field"><span class="label">Lønnen, der stiger, når et lån i lønnen er væk</span><select class="inp" data-po="incCat">'+inc.map(c=>'<option value="'+c.id+'"'+((po.incCat||inc[0]&&inc[0].id)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></label>':'')+'</div></section>';
   const stopSum=(po.stopCats||[]).reduce((s,id)=>{const c=catById(id);return s+(c?curPay(c):0)},0);
@@ -1134,13 +1155,13 @@ function taxObj(){const st=S.settings;if(!st.tax){const inc=st.cats.filter(c=>G(
 function taxCalc(p,o){o=o||{};const brutto=+(o.brutto!=null?o.brutto:p.brutto)||0;
   const pens=(+p.pensionKr||0)+brutto*(+p.pensionPct||0)/100;const atp=+p.atp||0;
   const base=Math.max(0,brutto-atp-pens);const am=Math.round(base*AM_PCT/100);
-  const fb=(o.fribil!=null?+o.fribil:+p.fribil||0)/12;
+  const fb=(o.fribil!=null?+o.fribil:fbFor(p))/12;
   const skattepl=base-am+fb;const askat=Math.round(Math.max(0,skattepl-(+p.fradrag||0))*(+p.traek||0)/100);
   const efter=o.efterSkat!=null?+o.efterSkat:+p.efterSkat||0;
   const netto=base-am-askat-efter;
   return {brutto,pens,atp,base,am,fb,skattepl,askat,efter,netto}}
 /* månedlig skat af fri bil for den person, der har en fri bil-værdi */
-function fribilTax(){const t=S.settings.tax;if(!t)return 0;let s=0;for(const p of t.persons){if(!+p.fribil)continue;s+=taxCalc(p).askat-taxCalc(p,{fribil:0}).askat}return s}
+function fribilTax(){const t=S.settings.tax;if(!t)return 0;let s=0;for(const p of t.persons){if(!fbFor(p))continue;s+=taxCalc(p).askat-taxCalc(p,{fribil:0}).askat}return s}
 function vSkat(){
   const t=taxObj();const st=S.settings;const inc=st.cats.filter(c=>G(c.g).type==='income');
   const months=Array.from({length:25},(_,i)=>addM(CUR,i-12));
@@ -1158,20 +1179,20 @@ function vSkat(){
     if(p.brutto){
       h+='<div class="lnres"><div><span class="label">Udregning pr. md</span><br>Brutto '+kr(c.brutto)+(c.atp?' − ATP '+kr(c.atp):'')+(c.pens?' − pension '+kr(c.pens):'')+' − AM-bidrag '+kr(c.am)+' − A-skat '+kr(c.askat)+(c.efter?' − træk efter skat '+kr(c.efter):'')+'</div>'+
         '<div><span class="label">Netto pr. md</span><br><b class="num" style="font-size:20px">'+kr(c.netto)+'</b>'+(diff!=null?'<br><span class="'+(Math.abs(diff)<=50?'pos':'neg')+'">'+(Math.abs(diff)<=50?'Passer med lønsedlen':'Afviger '+kr(diff)+' fra lønsedlen – tjek trækprocent og fradrag')+'</span>':'')+'</div>'+
-        (+p.fribil?'<div><span class="label">Fri bil</span><br>Koster '+kr(noFb.netto-c.netto)+' pr. md i skat. Uden fri bil: '+kr(noFb.netto)+'</div>':'')+
+        (fbFor(p)?'<div><span class="label">Fri bil'+(p.fribil==null?' (fra Lån-fanen)':'')+'</span><br>Værdi '+kr(fbFor(p))+' pr. år. Koster '+kr(noFb.netto-c.netto)+' pr. md i skat. Uden fri bil: '+kr(noFb.netto)+'</div>':'')+
         (+p.efterSkat?'<div><span class="label">Når træk efter skat stopper</span><br>Netto stiger til '+kr(taxCalc(p,{efterSkat:0}).netto)+'</div>':'')+'</div>';
     }
     h+='</section>'}
   h+='<div class="row"><button class="btn" type="button" data-act="tpadd">＋ Tilføj person</button></div>';
   const ready=t.persons.filter(p=>p.brutto&&p.traek!=null&&p.cat);
-  h+='<section class="panel row spread"><div style="flex:1 1 300px"><h2>Brug nettolønnen i budgettet</h2><p class="sub">Sætter indtægten i budgettet til den beregnede nettoløn fra den valgte måned og frem, i alle budgetår.'+(ready.length?' Gælder: '+ready.map(p=>esc(p.name)+' '+kr(taxCalc(p).netto)).join(', ')+'.':' Udfyld bruttoløn og trækprocent, og vælg budgetposten først.')+'</p></div>'+
+  h+='<section class="panel row spread"><div style="flex:1 1 300px"><h2>Brug nettolønnen i budgettet</h2><p class="sub">Sætter indtægten i budgettet til den beregnede nettoløn (uden fri bil) fra den valgte måned og frem, i alle budgetår. Skatten af fri bil lægges ind som egen post fra salgsmåneden, når du trykker Gennemfør under Lån.'+(ready.length?' Gælder: '+ready.map(p=>esc(p.name)+' '+kr(taxCalc(p).netto)).join(', ')+'.':' Udfyld bruttoløn og trækprocent, og vælg budgetposten først.')+'</p></div>'+
     '<label class="field"><span class="label">Fra måned</span><select class="inp" data-tm="1">'+months.map(k=>'<option value="'+k+'"'+(k===(t.month||CUR)?' selected':'')+'>'+mLabel(k,true)+'</option>').join('')+'</select></label>'+
     '<button class="btn primary" type="button" data-act="taxapply"'+(ready.length?'':' disabled')+'>Brug i budgettet</button></section>';
   return h;
 }
 function taxApply(){const t=taxObj();const ym=t.month||CUR;let n=0;const st=S.settings;
   const ensure=(id,name)=>{let c=catById(id);if(!c){const g=(grp().find(x=>x.type==='income')||{}).id;c={id,name,g,b:{amt:0,f:1,s:1}};st.cats.push(c)}else c.name=name;return c};
-  for(const p of t.persons){if(!(p.brutto&&p.traek!=null&&p.cat))continue;const c=catById(p.cat);if(!c)continue;const v=taxCalc(p).netto;budFrom(c,ym,()=>v);n++;
+  for(const p of t.persons){if(!(p.brutto&&p.traek!=null&&p.cat))continue;const c=catById(p.cat);if(!c)continue;const v=taxCalc(p,{fribil:0}).netto;budFrom(c,ym,()=>v);n++;
     const plans={};const pl=y=>plans[y]||(plans[y]=fvPlan(p,y));if((+p.fvPct||+p.fvPct2)&&(p.fvMonths||[]).length&&!p.fvLoan){const fc=ensure('fv_'+p.id,'Fritvalg ('+p.name+')');budFrom(fc,ym,(x,m,y)=>pl(y).out[m-1].fvNet)}
     for(const e of (p.extras||[])){if(!+e.amt)continue;const ec=ensure('ex_'+e.id,(e.name||'Ekstra')+' ('+p.name+')');budFrom(ec,ym,(x,m)=>m===+e.m?netExtra(p,+e.amt):0)}}
   markDirty('settings');renderAll(true);toast('Nettoløn, fritvalg og ekstra udbetalinger er lagt i budgettet fra '+mLabel(ym,true))}
@@ -1184,7 +1205,7 @@ function extrasIn(p,m){return (p.extras||[]).filter(e=>+e.m===m).reduce((s,e)=>s
 const fvPctFor=(p,y)=>(p.fvPct2!=null&&y>=+(p.fvYear2||TODAY.getFullYear()+1))?+p.fvPct2:(+p.fvPct||0);
 function fvPlan(p,y){y=y||S.ui.budgetYear||TODAY.getFullYear();
   const pct=fvPctFor(p,y);const pay=(p.fvMonths||[]).map(Number).filter(m=>m>=1&&m<=12).sort((a,b)=>a-b);
-  const accAt=j=>{const yy=j<=0?y-1:y,m=j<=0?j+12:j;return fvPctFor(p,yy)/100*((+p.brutto||0)+(+p.fribil||0)/12+extrasIn(p,m))};
+  const accAt=j=>{const yy=j<=0?y-1:y,m=j<=0?j+12:j;return fvPctFor(p,yy)/100*((+p.brutto||0)+(fbActive(yy,m)?fbFor(p)/12:0)+extrasIn(p,m))};
   const acc=Array.from({length:12},(_,i)=>accAt(i+1));
   const out=Array.from({length:12},()=>({fv:0,fvNet:0,ex:0,exNet:0}));
   if(pct&&pay.length){for(let k=0;k<pay.length;k++){const m=pay[k];const prev=k?pay[k-1]:pay[pay.length-1]-12;let F=0;for(let j=prev+1;j<=m;j++)F+=accAt(j);out[m-1].fv=F;out[m-1].fvNet=netExtra(p,F)}}
@@ -1650,7 +1671,7 @@ document.addEventListener('change',e=>{
     else{const v=el.value.trim()===''?null:parseAmt(el.value);l[k]=v==null||isNaN(v)?(k==='bal'||k==='rate'?null:0):Math.abs(v)}
     markDirty('settings');renderAll(true)}return}
   if(el.dataset.po){const po=payoffObj();const k=el.dataset.po;
-    if(k==='month'||k==='incCat')po[k]=el.value;else if(k==='stop'){const st=new Set(po.stopCats||[]);if(el.checked)st.add(el.value);else st.delete(el.value);po.stopCats=[...st]}
+    if(k==='month'||k==='incCat'||k==='fbPerson')po[k]=el.value;else if(k==='carNew')po.carNew=el.checked;else if(k==='stop'){const st=new Set(po.stopCats||[]);if(el.checked)st.add(el.value);else st.delete(el.value);po.stopCats=[...st]}
     else{const v=el.value.trim()===''?null:parseAmt(el.value);po[k]=v==null||isNaN(v)?(k==='saleCost'?0:null):Math.abs(v)}
     markDirty('settings');renderAll(true);return}
   if(el.dataset.tx){const t=txById(el.dataset.tx);if(t){t.c=el.value||null;t.auto=false;markMonth(el.dataset.k);renderHeader();el.style.borderColor=t.c?'':'var(--warn)';if(S.ui.tab==='oversigt'){renderAll(true);if(t.c)toast('Flyttet til '+catById(t.c).name)}}}
