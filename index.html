@@ -1187,7 +1187,8 @@ function vSkat(){
   const f=(p,lbl,k,ph,dec)=>'<label class="field"><span class="label">'+lbl+'</span><input class="inp num" inputmode="decimal" data-tp="'+p.id+'" data-tk="'+k+'" value="'+(p[k]==null?'':esc(dec?String(p[k]).replace('.',','):nf0.format(p[k])))+'" placeholder="'+(ph||'')+'"></label>';
   let h='<div><h1>Løn og skat</h1><p class="sub">Skriv tallene fra din lønseddel én gang. Så regner appen nettolønnen ud, og hvad den bliver, når noget ændrer sig – fx fri bil eller et lån, der stopper. Beregningen følger lønsedlen (AM-bidrag 8 % og din trækprocent efter fradrag). Det er et overslag, ikke en officiel skatteberegning. Tjek vigtige tal i din forskudsopgørelse på skat.dk.</p></div>';
   {const y0=TODAY.getFullYear();h+='<div class="row"><span class="label">Vis år</span><div class="seg">'+[y0,y0+1,y0+2].map(y=>'<button type="button" data-act="byear" data-y="'+y+'" aria-pressed="'+(y===S.ui.budgetYear)+'">'+y+'</button>').join('')+'</div></div>'}
-  for(const p of t.persons){const c=taxCalc(p);const noFb=taxCalc(p,{fribil:0});
+  for(const p of t.persons){const fbAll=fbFor(p);const fbNow=p.fribil!=null?fbAll:(fbActive(TODAY.getFullYear(),TODAY.getMonth()+1)?fbAll:0);
+    const c=taxCalc(p,{fribil:fbNow});const noFb=taxCalc(p,{fribil:0});const withFb=taxCalc(p,{fribil:fbAll});const fbStart=p.fribil==null&&!fbNow&&fbAll?payoffObj().month:null;
     const diff=p.slipNetto!=null&&p.brutto?c.netto-p.slipNetto:null;
     h+='<section class="panel lncard"><div class="row spread"><input class="inp gname" data-tp="'+p.id+'" data-tk="name" value="'+esc(p.name)+'" aria-label="Navn"><button class="x" type="button" data-act="tpdel" data-id="'+p.id+'" aria-label="Fjern '+esc(p.name)+'">✕</button></div>'+
       '<div class="lnf">'+f(p,'Bruttoløn pr. md','brutto','fx 45.000')+f(p,'Pension, eget bidrag %','pensionPct','fx 4',1)+f(p,'Feriepenge-opsparing % (pensionsgivende)','feriePct','fx 12,5',1)+(p.feriePct==null&&p.pensionBase!=null?f(p,'Pension beregnes af (% af lønnen)','pensionBase','100',1):'')+f(p,'Pension, eget bidrag kr.','pensionKr','0')+f(p,'ATP pr. md','atp','fx 99')+
@@ -1197,9 +1198,9 @@ function vSkat(){
     h+=vExtras(p);
     if(p.brutto){
       h+='<div class="lnres"><div><span class="label">Udregning pr. md</span><br>'+(c.pens&&p.feriePct!=null?'<span class="muted" style="font-size:12.5px">Pensionsgrundlag '+kr(c.pgrund)+' = løn + '+String(p.feriePct).replace('.',',')+' % feriepenge + fritvalgsopsparing</span><br>':'')+'Brutto '+kr(c.brutto)+(c.atp?' − ATP '+kr(c.atp):'')+(c.pens?' − pension '+kr(c.pens):'')+' − AM-bidrag '+kr(c.am)+' − A-skat '+kr(c.askat)+(c.efter?' − træk efter skat '+kr(c.efter):'')+'</div>'+
-        '<div><span class="label">Netto pr. md</span><br><b class="num" style="font-size:20px">'+kr(c.netto)+'</b>'+(diff!=null?'<br><span class="'+(Math.abs(diff)<=50?'pos':'neg')+'">'+(Math.abs(diff)<=50?'Passer med lønsedlen':'Afviger '+kr(diff)+' fra lønsedlen – tjek trækprocent og fradrag')+'</span>':'')+'</div>'+
-        (fbFor(p)?'<div><span class="label">Fri bil'+(p.fribil==null?' (fra Lån-fanen)':'')+'</span><br>Værdi '+kr(fbFor(p))+' pr. år. Koster '+kr(noFb.netto-c.netto)+' pr. md i skat. Uden fri bil: '+kr(noFb.netto)+'</div>':'')+
-        (+p.efterSkat?'<div><span class="label">Når træk efter skat stopper</span><br>Netto stiger til '+kr(taxCalc(p,{efterSkat:0}).netto)+'</div>':'')+'</div>';
+        '<div><span class="label">Netto pr. md'+(fbStart?' i dag':'')+'</span><br><b class="num" style="font-size:20px">'+kr(c.netto)+'</b>'+(diff!=null?'<br><span class="'+(Math.abs(diff)<=50?'pos':'neg')+'">'+(Math.abs(diff)<=50?'Passer med lønsedlen':'Afviger '+kr(diff)+' fra lønsedlen – tjek trækprocent og fradrag')+'</span>':'')+'</div>'+
+        (fbFor(p)?'<div><span class="label">Fri bil'+(p.fribil==null?' (fra Lån-fanen)':'')+'</span><br>'+(fbStart?'Fra '+mLabel(fbStart,true)+': ':'')+'værdi '+kr(fbAll)+' pr. år. Koster '+kr(noFb.netto-withFb.netto)+' pr. md i skat. '+(fbStart?'Netto bliver '+kr(withFb.netto):'Uden fri bil: '+kr(noFb.netto))+'</div>':'')+
+        (+p.efterSkat?'<div><span class="label">Når træk efter skat stopper</span><br>Netto stiger til '+kr(taxCalc(p,{efterSkat:0,fribil:fbNow}).netto)+'</div>':'')+'</div>';
     }
     h+='</section>'}
   h+='<div class="row"><button class="btn" type="button" data-act="tpadd">＋ Tilføj person</button></div>';
