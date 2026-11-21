@@ -1246,7 +1246,7 @@ function taxApply(){const t=taxObj();const ym=t.month||CUR;let n=0;const st=S.se
   const ensure=(id,name)=>{let c=catById(id);if(!c){const g=(grp().find(x=>x.type==='income')||{}).id;c={id,name,g,b:{amt:0,f:1,s:1}};st.cats.push(c)}else c.name=name;return c};
   for(const p of t.persons){if(!(p.brutto&&p.traek!=null&&p.cat))continue;const c=catById(p.cat);if(!c)continue;budFrom(c,ym,(x,m,y)=>taxCalc(p,{fribil:0,y}).netto);n++;
     const plans={};const pl=y=>plans[y]||(plans[y]=fvPlan(p,y));if((+p.fvPct||+p.fvPct2)&&!p.fvLoan){const fc=ensure('fv_'+p.id,'Fritvalg ('+p.name+')');budFrom(fc,ym,(x,m,y)=>pl(y).out[m-1].fvNet)}
-    for(const e of (p.extras||[])){if(!+e.amt)continue;const ec=ensure('ex_'+e.id,(e.name||'Ekstra')+' ('+p.name+')');budFrom(ec,ym,(x,m,y)=>m===+e.m?netExtra(p,+e.amt,e.pens===false?0:pfLon(p,y)):0)}}
+    for(const e of (p.extras||[])){if(!+e.amt)continue;const ec=ensure('ex_'+e.id,(e.name||'Ekstra')+' ('+p.name+')');budFrom(ec,ym,(x,m,y)=>m===+e.m&&exOn(e,y)?netExtra(p,+e.amt,e.pens===false?0:pfLon(p,y)):0)}}
   markDirty('settings');renderAll(true);toast('Nettoløn, fritvalg og ekstra udbetalinger er lagt i budgettet fra '+mLabel(ym,true))}
 
 /* ---------- Fritvalg og ekstra udbetalinger ---------- */
@@ -1255,21 +1255,22 @@ function taxApply(){const t=taxObj();const ym=t.month||CUR;let n=0;const st=S.se
 const netExtra=(p,F,pf)=>{const pen=F*(+p.pensionPct||0)/100*(pf||0);const b=F-pen;const am=b*AM_PCT/100;return b-am-(b-am)*(+p.traek||0)/100};
 const pfLon=(p,y)=>p.feriePct!=null&&p.feriePct!==''?1+(+p.feriePct)/100+fvPctFor(p,y||S.ui.budgetYear||TODAY.getFullYear())/100:(p.pensionBase!=null&&p.pensionBase!==''?+p.pensionBase:100)/100;
 const pfFv=p=>p.feriePct!=null&&p.feriePct!==''?(+p.feriePct)/100:(+p.pensionFv||0)/100;
-function extrasNetIn(p,m,y){return (p.extras||[]).filter(e=>+e.m===m).reduce((s,e)=>s+netExtra(p,+e.amt||0,e.pens===false?0:pfLon(p,y)),0)}
-function extrasIn(p,m){return (p.extras||[]).filter(e=>+e.m===m).reduce((s,e)=>s+(+e.amt||0),0)}
+const exOn=(e,y)=>!e.y0||y>=+e.y0;
+function extrasNetIn(p,m,y){return (p.extras||[]).filter(e=>+e.m===m&&exOn(e,y)).reduce((s,e)=>s+netExtra(p,+e.amt||0,e.pens===false?0:pfLon(p,y)),0)}
+function extrasIn(p,m,y){return (p.extras||[]).filter(e=>+e.m===m&&exOn(e,y||S.ui.budgetYear)).reduce((s,e)=>s+(+e.amt||0),0)}
 const fvPctFor=(p,y)=>(p.fvPct2!=null&&y>=+(p.fvYear2||TODAY.getFullYear()+1))?+p.fvPct2:(+p.fvPct||0);
 /* udbetalingsmåneder pr. år (p.fvMonthsY[år]); år uden egen plan bruger den fælles (p.fvMonths) */
 const fvMonthsFor=(p,yy)=>((p.fvMonthsY&&p.fvMonthsY[yy])||p.fvMonths||[]).map(Number).filter(m=>m>=1&&m<=12).sort((a,b)=>a-b);
 /* Fritvalg som en løbende saldo: starter med saldoen i dag (efter seneste lønseddel), lægger hver måneds opsparing til og udbetaler i de valgte måneder. */
 function fvPlan(p,y){y=y||S.ui.budgetYear||TODAY.getFullYear();
   const pct=fvPctFor(p,y);const pay=fvMonthsFor(p,y);
-  const accY=(yy,m)=>fvPctFor(p,yy)/100*((+p.brutto||0)+(fbActive(yy,m)?fbFor(p)/12:0)+extrasIn(p,m));
+  const accY=(yy,m)=>fvPctFor(p,yy)/100*((+p.brutto||0)+(fbActive(yy,m)?fbFor(p)/12:0)+extrasIn(p,m,yy));
   const acc=Array.from({length:12},(_,i)=>accY(y,i+1));
   const out=Array.from({length:12},()=>({fv:0,fvNet:0,ex:0,exNet:0}));
   let sal=+p.fvSaldo||0;const last=y+'-12';
   if(+p.fvPct||+p.fvPct2)for(let ym=addM(CUR,1);ym<=last;ym=addM(ym,1)){const yy=+ym.slice(0,4),m=mNum(ym);sal+=accY(yy,m);
     if(fvMonthsFor(p,yy).includes(m)){if(yy===y&&sal>0.5){out[m-1].fv=sal;out[m-1].fvNet=netExtra(p,sal,pfFv(p))}sal=0}}
-  for(let m=1;m<=12;m++){const e=extrasIn(p,m);out[m-1].ex=e;out[m-1].exNet=extrasNetIn(p,m,y)}
+  for(let m=1;m<=12;m++){const e=extrasIn(p,m,y);out[m-1].ex=e;out[m-1].exNet=extrasNetIn(p,m,y)}
   const year=out.reduce((s,o)=>s+o.fvNet,0);
   return {acc,out,pay,pct,y,saldoEnd:sal,avgNet:year/12,yearNet:year,yearAcc:acc.reduce((s,v)=>s+v,0)}}
 /* ekstra afdrag pr. md på et lån fra fritvalg (gennemsnit over året) */
@@ -1285,7 +1286,7 @@ function vExtras(p){
     '<div><span class="label">Udbetales i '+S.ui.budgetYear+'</span> <span class="muted" style="font-size:12.5px">(vælg år øverst – hvert år har sine egne måneder)</span> <button class="btn ghost" type="button" data-act="fvall" data-id="'+p.id+'" style="padding:2px 8px">alle måneder</button><button class="btn ghost" type="button" data-act="fvjn" data-id="'+p.id+'" style="padding:2px 8px">juni + nov</button><div class="chips" style="margin-top:6px">'+
     MON.map((mn,i)=>'<label class="chip" style="display:inline-flex;gap:5px;align-items:center;padding:4px 10px"><input type="checkbox" data-tfm="'+(i+1)+'" data-tp="'+p.id+'"'+(fvMonthsFor(p,S.ui.budgetYear).includes(i+1)?' checked':'')+'>'+mn+'</label>').join('')+'</div></div>';
   h+='<div style="display:flex;flex-direction:column;gap:6px"><span class="label">Ekstra udbetalinger (fx bestyrelseshonorar, bonus)</span>'+
-    (p.extras||[]).map(e=>'<div class="row" style="gap:6px"><input class="inp" style="flex:1 1 140px" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="name" value="'+esc(e.name)+'" aria-label="Navn"><input class="inp num" style="width:110px" inputmode="decimal" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="amt" value="'+(e.amt?nf0.format(e.amt):'')+'" placeholder="beløb" aria-label="Beløb"><select class="inp" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="m" aria-label="Måned">'+MONL.map((l,i)=>'<option value="'+(i+1)+'"'+(+e.m===i+1?' selected':'')+'>'+l+'</option>').join('')+'</select><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="pens"'+(e.pens===false?'':' checked')+'> med pension</label><button class="x" type="button" data-act="exdel" data-id="'+e.id+'" data-p="'+p.id+'" aria-label="Fjern">✕</button></div>').join('')+
+    (p.extras||[]).map(e=>'<div class="row" style="gap:6px"><input class="inp" style="flex:1 1 140px" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="name" value="'+esc(e.name)+'" aria-label="Navn"><input class="inp num" style="width:110px" inputmode="decimal" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="amt" value="'+(e.amt?nf0.format(e.amt):'')+'" placeholder="beløb" aria-label="Beløb"><select class="inp" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="m" aria-label="Måned">'+MONL.map((l,i)=>'<option value="'+(i+1)+'"'+(+e.m===i+1?' selected':'')+'>'+l+'</option>').join('')+'</select>'+'<select class="inp" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="y0" aria-label="Fra år"><option value="">hvert år</option>'+[0,1,2,3,4,5].map(i=>TODAY.getFullYear()+i).map(y=>'<option value="'+y+'"'+(+e.y0===y?' selected':'')+'>fra '+y+'</option>').join('')+'</select><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="pens"'+(e.pens===false?'':' checked')+'> med pension</label><button class="x" type="button" data-act="exdel" data-id="'+e.id+'" data-p="'+p.id+'" aria-label="Fjern">✕</button></div>').join('')+
     '<div><button class="btn" type="button" data-act="exadd" data-id="'+p.id+'" style="padding:4px 10px">＋ Tilføj ekstra udbetaling</button></div></div>';
   const rows=P.out.map((o,i)=>({o,i})).filter(x=>x.o.fv||x.o.ex);
   if(rows.length)h+='<div style="display:flex;flex-direction:column;gap:4px"><span class="label">Udbetalinger i '+P.y+' (brutto → netto) · fritvalg '+String(P.pct).replace('.',',')+' %</span>'+rows.map(({o,i})=>'<div class="row spread" style="gap:6px;border-top:1px solid var(--line);padding-top:4px"><span>'+MONL[i]+'</span><span class="num" style="font-size:13px">'+(o.fv?'fritvalg '+nf0.format(Math.round(o.fv))+' → <b>'+nf0.format(Math.round(o.fvNet))+'</b>':'')+(o.fv&&o.ex?' · ':'')+(o.ex?'ekstra '+nf0.format(Math.round(o.ex))+' → <b>'+nf0.format(Math.round(o.exNet))+'</b>':'')+'</span></div>').join('')+
@@ -1724,7 +1725,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;
-  if(el.dataset.te){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);const ex=p&&(p.extras||[]).find(x=>x.id===el.dataset.te);if(ex){const k=el.dataset.tef;if(k==='name')ex.name=el.value.trim()||ex.name;else if(k==='m')ex.m=+el.value;else if(k==='pens')ex.pens=el.checked;else{const v=parseAmt(el.value);ex.amt=isNaN(v)?0:Math.abs(v)}markDirty('settings');laterRender()}return}
+  if(el.dataset.te){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);const ex=p&&(p.extras||[]).find(x=>x.id===el.dataset.te);if(ex){const k=el.dataset.tef;if(k==='name')ex.name=el.value.trim()||ex.name;else if(k==='m')ex.m=+el.value;else if(k==='y0')ex.y0=el.value?+el.value:null;else if(k==='pens')ex.pens=el.checked;else{const v=parseAmt(el.value);ex.amt=isNaN(v)?0:Math.abs(v)}markDirty('settings');laterRender()}return}
   if(el.dataset.tfm){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const yy=S.ui.budgetYear;const st=new Set(fvMonthsFor(p,yy));const m=+el.dataset.tfm;if(el.checked)st.add(m);else st.delete(m);p.fvMonthsY=p.fvMonthsY||{};p.fvMonthsY[yy]=[...st].sort((a,b)=>a-b);markDirty('settings');laterRender()}return}
   if(el.dataset.tp){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const k=el.dataset.tk;if(k==='name')p.name=el.value.trim()||p.name;else if(k==='cat'||k==='fvLoan')p[k]=el.value;else{const v=el.value.trim()===''?null:parseAmt(el.value);p[k]=v==null||isNaN(v)?null:Math.abs(v)}markDirty('settings');laterRender()}return}
   if(el.dataset.tm){taxObj().month=el.value;markDirty('settings');laterRender();return}
