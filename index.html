@@ -284,6 +284,7 @@ tr.ovdetail td{padding:0;background:var(--surface-2)}
     <button type="button" role="tab" data-tab="budget">Budget</button>
     <button type="button" role="tab" data-tab="fordeling">Fordeling</button>
     <button type="button" role="tab" data-tab="laan">Lån</button>
+    <button type="button" role="tab" data-tab="skat">Løn &amp; skat</button>
     <button type="button" role="tab" data-tab="trans">Transaktioner</button>
     <button type="button" role="tab" data-tab="regler">Regler</button>
     <button type="button" role="tab" data-tab="import">Import</button>
@@ -633,7 +634,7 @@ function renderAll(keepScroll){
   if(S.loaded&&!S.demo&&!S._repaired){S._repaired=1;if(repairOutside())toast('Overførsler til lån og klassekasser tæller nu som udgifter')}
   const y=window.scrollY;
   renderBanner();renderHeader();
-  const v={oversigt:vOversigt,likviditet:vLikviditet,budget:vBudget,fordeling:vFordeling,laan:vLaan,trans:vTrans,regler:vRegler,import:vImport}[S.ui.tab]||vOversigt;
+  const v={oversigt:vOversigt,likviditet:vLikviditet,budget:vBudget,fordeling:vFordeling,laan:vLaan,skat:vSkat,trans:vTrans,regler:vRegler,import:vImport}[S.ui.tab]||vOversigt;
   $('#main').innerHTML=v();
   if(S.ui.tab==='budget')bindBudget();
   if(S.ui.tab==='import')bindImport();
@@ -1011,6 +1012,7 @@ function loanDefaults(){
   const kl=find(/køkkenlån/i);if(kl)add(kl,'Køkkenlån');
   st.loans=L;markDirty('settings');
 }
+const poFribil=()=>{const po=payoffObj();return po.fribil!=null?+po.fribil:fribilTax()};
 function payoffObj(){const st=S.settings;return st.payoff=st.payoff||{month:addM(CUR,2),price:null,saleCost:0,stopCats:[],fribil:null,incCat:'',applied:null}}
 /* månedlig simulering: rente pr. måned = årsrente/12; ydelse omregnet til pr. måned */
 function simLoan(bal,rate,pm,maxN){let b=+bal||0,n=0,int=0;const r=(+rate||0)/1200;const lim=maxN==null?600:maxN;
@@ -1082,13 +1084,13 @@ function vLaan(){
   const carLoan=loans.find(l=>l.car&&l.cat);const carG=carLoan&&catById(carLoan.cat)?catById(carLoan.cat).g:(grp().find(g=>/bil/i.test(g.name))||{}).id;
   const carCats=st.cats.filter(c=>c.g===carG&&G(c.g).type==='expense'&&!(loans.some(l=>l.cat===c.id)));
   const inc=st.cats.filter(c=>G(c.g).type==='income');
-  h+='<section class="panel"><h2>Firmabil</h2><p class="sub">Når bilen bliver firmabil, betaler firmaet driften. Vælg, hvilke poster der stopper fra '+mLabel(po.month,true)+', og skriv skatten af fri bil. Den præcise skat får du hos din revisor eller i SKATs beregner.</p><div class="chips" style="margin-top:10px">'+
+  h+='<section class="panel"><h2>Firmabil</h2><p class="sub">Når bilen bliver firmabil, betaler firmaet driften. Vælg, hvilke poster der stopper fra '+mLabel(po.month,true)+', og skriv skatten af fri bil – eller lad feltet stå tomt, så bruges beløbet fra Løn &amp; skat. Den skattepligtige værdi af bilen får du hos firmaet eller i SKATs beregner.</p><div class="chips" style="margin-top:10px">'+
     (carCats.length?carCats.map(c=>'<label class="chip" style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" data-po="stop" value="'+c.id+'"'+((po.stopCats||[]).includes(c.id)?' checked':'')+'> '+esc(c.name)+' <span class="muted num">'+kr(curPay(c))+'</span></label>').join(''):'<span class="muted">Ingen bilposter fundet.</span>')+'</div>'+
-    '<div class="lnf" style="margin-top:12px"><label class="field"><span class="label">Skat af fri bil pr. md</span><input class="inp num" inputmode="decimal" data-po="fribil" value="'+(po.fribil!=null?nf0.format(po.fribil):'')+'" placeholder="0"></label>'+
+    '<div class="lnf" style="margin-top:12px"><label class="field"><span class="label">Skat af fri bil pr. md</span><input class="inp num" inputmode="decimal" data-po="fribil" value="'+(po.fribil!=null?nf0.format(po.fribil):'')+'" placeholder="'+(fribilTax()?'beregnet '+nf0.format(fribilTax()):'0')+'"></label>'+
     (loans.some(l=>l.viaLon)?'<label class="field"><span class="label">Lønnen, der stiger, når et lån i lønnen er væk</span><select class="inp" data-po="incCat">'+inc.map(c=>'<option value="'+c.id+'"'+((po.incCat||inc[0]&&inc[0].id)===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></label>':'')+'</div></section>';
   const stopSum=(po.stopCats||[]).reduce((s,id)=>{const c=catById(id);return s+(c?curPay(c):0)},0);
-  const net=P.freedBud+P.freedLon+stopSum-(+po.fribil||0);
-  h+='<div class="callout '+(net>=0?'ok':'warn')+'"><p><b>I alt pr. måned fra '+mLabel(po.month,true)+': '+(net>=0?'+':'')+kr(net)+'</b> Lån væk '+kr(P.freedBud+P.freedLon)+' + bildrift væk '+kr(stopSum)+' − skat af fri bil '+kr(+po.fribil||0)+' – før skat af den højere løn, og det er et overslag.</p></div>';
+  const fbv=poFribil();const net=P.freedBud+P.freedLon+stopSum-fbv;
+  h+='<div class="callout '+(net>=0?'ok':'warn')+'"><p><b>I alt pr. måned fra '+mLabel(po.month,true)+': '+(net>=0?'+':'')+kr(net)+'</b> Lån væk '+kr(P.freedBud+P.freedLon)+' + bildrift væk '+kr(stopSum)+' − skat af fri bil '+kr(fbv)+(po.fribil==null&&fbv?' (beregnet under Løn & skat)':'')+' – før skat af den højere løn, og det er et overslag.</p></div>';
   h+='<section class="panel row spread"><div style="flex:1 1 300px"><h2>Gennemfør i budgettet</h2><p class="sub">Sætter ydelsen til 0 fra '+mLabel(po.month,true)+' på de lån, der indfries helt. Lån, der bliver delvist indfriet, slutter tidligere. Lønnen hæves for lån, der er trukket i lønnen. De valgte bilposter stopper, og skat af fri bil lægges ind. Det gælder alle budgetår fra '+po.month.slice(0,4)+' og frem. Du kan altid fortryde.</p></div>'+
     (po.applied?'<button class="btn" type="button" data-act="poundo">Fortryd gennemførsel</button>':'<button class="btn primary" type="button" data-act="poapply"'+(P.cash0&&!P.rows.some(r=>r.status==='nodata'&&(r.l.pay>0))?'':' disabled')+'>Gennemfør i budgettet</button>')+'</section>';
   if(P.rows.some(r=>r.status==='nodata'))h+='<p class="muted">Gennemfør kræver restgæld på alle lån.</p>';
@@ -1112,14 +1114,61 @@ function payoffApply(){
       if(l.viaLon){if(inc){if(extra)budFrom(inc,ym,v=>v-extra);budFrom(inc,r.endAfter,v=>v+r.pm+extra)}}
       else if(c&&!goalsFor(c.id)){if(extra)budFrom(c,ym,v=>v+extra);budFrom(c,r.endAfter,()=>0)}n++}}
   for(const id of (po.stopCats||[])){const c=catById(id);if(c)budFrom(c,ym,()=>0)}
-  if(+po.fribil){let fb=st.cats.find(c=>c.id==='fribil');
+  const fbv=poFribil();if(fbv){let fb=st.cats.find(c=>c.id==='fribil');
     if(!fb){const carLoan=(st.loans||[]).find(l=>l.car&&l.cat);const g=carLoan&&catById(carLoan.cat)?catById(carLoan.cat).g:(grp().find(x=>x.type==='expense')||{}).id;fb={id:'fribil',name:'Skat af fri bil',g,b:{amt:0,f:1,s:1}};st.cats.push(fb)}
-    budFrom(fb,ym,()=>+po.fribil)}
+    budFrom(fb,ym,()=>fbv)}
   markDirty('settings');renderAll(true);toast('Gennemført i budgettet fra '+mLabel(ym,true)+' · '+n+' lån opdateret');
 }
 function payoffUndo(){const st=S.settings;const po=payoffObj();if(!po.applied)return;st.years=po.applied.years;st.cats=po.applied.cats;po.applied=null;markDirty('settings');renderAll(true);toast('Budgettet er sat tilbage')}
 function loanMove(id,d){const L=S.settings.loans||[];const i=L.findIndex(l=>l.id===id);const j=i+d;if(i<0||j<0||j>=L.length)return;[L[i],L[j]]=[L[j],L[i]];markDirty('settings');renderAll(true)}
 function loanSort(){const L=S.settings.loans||[];L.sort((a,b)=>(b.car?1:0)-(a.car?1:0)||((b.rate==null?-1:+b.rate)-(a.rate==null?-1:+a.rate)));markDirty('settings');renderAll(true);toast('Sorteret: pant først, så højeste rente')}
+
+/* ---------- Løn & skat ---------- */
+/* Regner som en lønseddel: brutto − ATP − eget pensionsbidrag = AM-grundlag; AM-bidrag 8 %;
+   A-skat = (AM-grundlag − AM-bidrag + fri bil/12 − månedsfradrag) × trækprocent; netto = AM-grundlag − AM-bidrag − A-skat − træk efter skat.
+   Tallene ligger i settings.tax (kun i Lars' egen database). Overslag – ikke en officiel skatteberegning. */
+const AM_PCT=8;
+function taxObj(){const st=S.settings;if(!st.tax){const inc=st.cats.filter(c=>G(c.g).type==='income'&&/løn/i.test(c.name));
+  st.tax={persons:(inc.length?inc:[{id:'',name:'Løn'}]).slice(0,2).map((c,i)=>({id:'p'+i,name:c.name.replace(/^løn\s*/i,'')||('Person '+(i+1)),cat:c.id,brutto:null,pensionPct:null,pensionKr:null,atp:null,traek:null,fradrag:null,fribil:null,efterSkat:null,slipNetto:null})),month:CUR}}
+  return st.tax}
+function taxCalc(p,o){o=o||{};const brutto=+(o.brutto!=null?o.brutto:p.brutto)||0;
+  const pens=(+p.pensionKr||0)+brutto*(+p.pensionPct||0)/100;const atp=+p.atp||0;
+  const base=Math.max(0,brutto-atp-pens);const am=Math.round(base*AM_PCT/100);
+  const fb=(o.fribil!=null?+o.fribil:+p.fribil||0)/12;
+  const skattepl=base-am+fb;const askat=Math.round(Math.max(0,skattepl-(+p.fradrag||0))*(+p.traek||0)/100);
+  const efter=o.efterSkat!=null?+o.efterSkat:+p.efterSkat||0;
+  const netto=base-am-askat-efter;
+  return {brutto,pens,atp,base,am,fb,skattepl,askat,efter,netto}}
+/* månedlig skat af fri bil for den person, der har en fri bil-værdi */
+function fribilTax(){const t=S.settings.tax;if(!t)return 0;let s=0;for(const p of t.persons){if(!+p.fribil)continue;s+=taxCalc(p).askat-taxCalc(p,{fribil:0}).askat}return s}
+function vSkat(){
+  const t=taxObj();const st=S.settings;const inc=st.cats.filter(c=>G(c.g).type==='income');
+  const months=Array.from({length:25},(_,i)=>addM(CUR,i-12));
+  const f=(p,lbl,k,ph,dec)=>'<label class="field"><span class="label">'+lbl+'</span><input class="inp num" inputmode="decimal" data-tp="'+p.id+'" data-tk="'+k+'" value="'+(p[k]==null?'':esc(dec?String(p[k]).replace('.',','):nf0.format(p[k])))+'" placeholder="'+(ph||'')+'"></label>';
+  let h='<div><h1>Løn og skat</h1><p class="sub">Skriv tallene fra din lønseddel én gang. Så regner appen nettolønnen ud, og hvad den bliver, når noget ændrer sig – fx fri bil eller et lån, der stopper. Beregningen følger lønsedlen (AM-bidrag 8 % og din trækprocent efter fradrag). Det er et overslag, ikke en officiel skatteberegning. Tjek vigtige tal i din forskudsopgørelse på skat.dk.</p></div>';
+  for(const p of t.persons){const c=taxCalc(p);const noFb=taxCalc(p,{fribil:0});
+    const diff=p.slipNetto!=null&&p.brutto?c.netto-p.slipNetto:null;
+    h+='<section class="panel lncard"><div class="row spread"><input class="inp gname" data-tp="'+p.id+'" data-tk="name" value="'+esc(p.name)+'" aria-label="Navn"><button class="x" type="button" data-act="tpdel" data-id="'+p.id+'" aria-label="Fjern '+esc(p.name)+'">✕</button></div>'+
+      '<div class="lnf">'+f(p,'Bruttoløn pr. md','brutto','fx 45.000')+f(p,'Pension, eget bidrag %','pensionPct','fx 4',1)+f(p,'Pension, eget bidrag kr.','pensionKr','0')+f(p,'ATP pr. md','atp','fx 99')+
+      f(p,'Trækprocent %','traek','fx 38',1)+f(p,'Fradrag pr. md','fradrag','fx 5.000')+f(p,'Fri bil – skattepligtig værdi pr. år','fribil','0')+f(p,'Træk efter skat pr. md','efterSkat','fx medarbejderlån')+
+      f(p,'Netto på lønsedlen (til kontrol)','slipNetto','valgfrit')+
+      '<label class="field"><span class="label">Lønnen står i budgettet som</span><select class="inp" data-tp="'+p.id+'" data-tk="cat"><option value="">– ingen –</option>'+inc.map(x=>'<option value="'+x.id+'"'+(x.id===p.cat?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label></div>';
+    if(p.brutto){
+      h+='<div class="lnres"><div><span class="label">Udregning pr. md</span><br>Brutto '+kr(c.brutto)+(c.atp?' − ATP '+kr(c.atp):'')+(c.pens?' − pension '+kr(c.pens):'')+' − AM-bidrag '+kr(c.am)+' − A-skat '+kr(c.askat)+(c.efter?' − træk efter skat '+kr(c.efter):'')+'</div>'+
+        '<div><span class="label">Netto pr. md</span><br><b class="num" style="font-size:20px">'+kr(c.netto)+'</b>'+(diff!=null?'<br><span class="'+(Math.abs(diff)<=50?'pos':'neg')+'">'+(Math.abs(diff)<=50?'Passer med lønsedlen':'Afviger '+kr(diff)+' fra lønsedlen – tjek trækprocent og fradrag')+'</span>':'')+'</div>'+
+        (+p.fribil?'<div><span class="label">Fri bil</span><br>Koster '+kr(noFb.netto-c.netto)+' pr. md i skat. Uden fri bil: '+kr(noFb.netto)+'</div>':'')+
+        (+p.efterSkat?'<div><span class="label">Når træk efter skat stopper</span><br>Netto stiger til '+kr(taxCalc(p,{efterSkat:0}).netto)+'</div>':'')+'</div>';
+    }
+    h+='</section>'}
+  h+='<div class="row"><button class="btn" type="button" data-act="tpadd">＋ Tilføj person</button></div>';
+  const ready=t.persons.filter(p=>p.brutto&&p.traek!=null&&p.cat);
+  h+='<section class="panel row spread"><div style="flex:1 1 300px"><h2>Brug nettolønnen i budgettet</h2><p class="sub">Sætter indtægten i budgettet til den beregnede nettoløn fra den valgte måned og frem, i alle budgetår.'+(ready.length?' Gælder: '+ready.map(p=>esc(p.name)+' '+kr(taxCalc(p).netto)).join(', ')+'.':' Udfyld bruttoløn og trækprocent, og vælg budgetposten først.')+'</p></div>'+
+    '<label class="field"><span class="label">Fra måned</span><select class="inp" data-tm="1">'+months.map(k=>'<option value="'+k+'"'+(k===(t.month||CUR)?' selected':'')+'>'+mLabel(k,true)+'</option>').join('')+'</select></label>'+
+    '<button class="btn primary" type="button" data-act="taxapply"'+(ready.length?'':' disabled')+'>Brug i budgettet</button></section>';
+  return h;
+}
+function taxApply(){const t=taxObj();const ym=t.month||CUR;let n=0;for(const p of t.persons){if(!(p.brutto&&p.traek!=null&&p.cat))continue;const c=catById(p.cat);if(!c)continue;const v=taxCalc(p).netto;budFrom(c,ym,()=>v);n++}
+  markDirty('settings');renderAll(true);toast('Nettoløn er lagt i budgettet fra '+mLabel(ym,true)+' for '+n+(n===1?' person':' personer'))}
 
 /* ---------- Transaktioner ---------- */
 function vTrans(){
@@ -1527,6 +1576,9 @@ document.addEventListener('click',e=>{
     case 'lnsort':loanSort();break;
     case 'poapply':payoffApply();break;
     case 'poundo':payoffUndo();break;
+    case 'tpadd':{const t=taxObj();t.persons.push({id:'p'+Date.now().toString(36),name:'Ny person',cat:'',brutto:null,pensionPct:null,pensionKr:null,atp:null,traek:null,fradrag:null,fribil:null,efterSkat:null,slipNetto:null});markDirty('settings');renderAll(true);break}
+    case 'tpdel':{const t=taxObj();t.persons=t.persons.filter(p=>p.id!==a.dataset.id);markDirty('settings');renderAll(true);break}
+    case 'taxapply':taxApply();break;
     case 'canceltpl':pendingTpl=null;$('#mapArea').innerHTML='';break;
     case 'wipe1':$('#wipeArea').innerHTML='<div class="row"><span class="neg">Er du sikker? Det kan ikke fortrydes.</span><button class="btn danger" type="button" data-act="wipe2">Ja, slet alt</button><button class="btn ghost" type="button" data-act="tab" data-tab="import">Nej</button></div>';break;
     case 'wipe2':wipe();break;
@@ -1545,6 +1597,8 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;
+  if(el.dataset.tp){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const k=el.dataset.tk;if(k==='name')p.name=el.value.trim()||p.name;else if(k==='cat')p.cat=el.value;else{const v=el.value.trim()===''?null:parseAmt(el.value);p[k]=v==null||isNaN(v)?null:Math.abs(v)}markDirty('settings');renderAll(true)}return}
+  if(el.dataset.tm){taxObj().month=el.value;markDirty('settings');renderAll(true);return}
   if(el.dataset.ln){const l=(S.settings.loans||[]).find(x=>x.id===el.dataset.ln);if(l){const k=el.dataset.lf;
     if(k==='name')l.name=el.value.trim()||l.name;else if(k==='freq')l.freq=+el.value;else if(k==='car')l.car=el.checked;
     else if(k==='cat'){if(el.value==='__lon'){l.viaLon=true;l.cat=''}else{l.viaLon=false;l.cat=el.value}}
