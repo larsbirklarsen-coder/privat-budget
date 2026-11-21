@@ -279,16 +279,12 @@ tr.ovdetail td{padding:0;background:var(--surface-2)}
     <button class="btn primary" id="katBtn" type="button">Kategorisér <span class="count" id="katCount">0</span></button>
   </div>
   <nav class="tabs wrap" id="tabs" role="tablist">
-    <button type="button" role="tab" data-tab="oversigt">Oversigt</button>
-    <button type="button" role="tab" data-tab="plan">Gældfri</button>
-    <button type="button" role="tab" data-tab="likviditet">Likviditet</button>
+    <button type="button" role="tab" data-tab="oversigt">Overblik</button>
+    <button type="button" role="tab" data-tab="plan">Gæld</button>
     <button type="button" role="tab" data-tab="budget">Budget</button>
-    <button type="button" role="tab" data-tab="fordeling">Fordeling</button>
-    <button type="button" role="tab" data-tab="laan">Lån</button>
-    <button type="button" role="tab" data-tab="skat">Løn &amp; skat</button>
+    <button type="button" role="tab" data-tab="skat">Løn</button>
     <button type="button" role="tab" data-tab="trans">Transaktioner</button>
-    <button type="button" role="tab" data-tab="regler">Regler</button>
-    <button type="button" role="tab" data-tab="import">Import</button>
+    <button type="button" role="tab" data-tab="mere">Mere</button>
   </nav>
 </header>
 <div id="banner"></div>
@@ -627,7 +623,7 @@ function renderBanner(){
 }
 function renderHeader(){
   const n=inbox().length;$('#katCount').textContent=n;$('#katBtn').classList.toggle('zero',!n);
-  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===S.ui.tab)));
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===(TABGROUP[S.ui.tab]||S.ui.tab))));
 }
 function renderAll(keepScroll){
   if(!S.settings)return;
@@ -636,8 +632,8 @@ function renderAll(keepScroll){
   const y=window.scrollY;
   const fk=focusKey(document.activeElement);
   renderBanner();renderHeader();
-  const v={oversigt:vOversigt,plan:vPlan,likviditet:vLikviditet,budget:vBudget,fordeling:vFordeling,laan:vLaan,skat:vSkat,trans:vTrans,regler:vRegler,import:vImport}[S.ui.tab]||vOversigt;
-  $('#main').innerHTML=v();
+  const v={oversigt:vOversigt,plan:vPlan,mere:vMere,likviditet:vLikviditet,budget:vBudget,fordeling:vFordeling,laan:vLaan,skat:vSkat,trans:vTrans,regler:vRegler,import:vImport}[S.ui.tab]||vOversigt;
+  $('#main').innerHTML=(S.ui.tab==='oversigt'&&!S.ui.ovRole?vStatus():'')+subSeg()+v();
   if(S.ui.tab==='budget')bindBudget();
   if(S.ui.tab==='import')bindImport();
   if(keepScroll)window.scrollTo(0,y);
@@ -1126,7 +1122,7 @@ function vLaan(){
       res+='</div>'}
     h+='<section class="panel lncard"><div class="row spread"><input class="inp gname" data-ln="'+l.id+'" data-lf="name" value="'+esc(l.name)+'" aria-label="Navn på lån"><div class="row" style="gap:4px">'+pill+
       '<button class="x" type="button" data-act="lnup" data-id="'+l.id+'" aria-label="Flyt op"'+(i?'':' disabled')+'>↑</button><button class="x" type="button" data-act="lndown" data-id="'+l.id+'" aria-label="Flyt ned"'+(i<loans.length-1?'':' disabled')+'>↓</button><button class="x" type="button" data-act="lndel" data-id="'+l.id+'" aria-label="Slet '+esc(l.name)+'">✕</button></div></div>'+
-      '<div class="lnf">'+fld('Restgæld i dag',l.id,'bal',l.bal!=null?nf0.format(l.bal):null,'fx 120.000')+fld('Rente % pr. år',l.id,'rate',l.rate==null?null:String(l.rate).replace('.',','),'fx 5,5')+
+      (lnDone(l)&&l.closed&&!(S.ui.lnOpen||{})[l.id]?'<div class="row spread" style="gap:8px"><span class="muted">Restgæld '+kr(+l.bal)+' · rente'+(l.bidrag?' + bidrag ':' ')+String(lnRate(l)).replace('.',',')+' % · ydelse '+kr(+l.pay||0)+(+l.freq===3?' pr. kvartal':' pr. md')+(l.viaLon?' · i lønnen':'')+(l.afFri?' · afdragsfri til '+mLabel(l.afFri):'')+'</span><button class="btn" type="button" data-act="lnopen" data-id="'+l.id+'" style="padding:4px 10px">Ret</button></div>':'<div class="lnf">'+fld('Restgæld i dag',l.id,'bal',l.bal!=null?nf0.format(l.bal):null,'fx 120.000')+fld('Rente % pr. år',l.id,'rate',l.rate==null?null:String(l.rate).replace('.',','),'fx 5,5')+
       fld('Ydelse',l.id,'pay',l.pay?nf0.format(l.pay):null,'0')+
       '<label class="field"><span class="label">Hvor tit</span><select class="inp" data-ln="'+l.id+'" data-lf="freq"><option value="1"'+(+l.freq!==3?' selected':'')+'>Pr. måned</option><option value="3"'+(+l.freq===3?' selected':'')+'>Pr. kvartal</option></select></label>'+
       '<label class="field"><span class="label">Betales via</span><select class="inp" data-ln="'+l.id+'" data-lf="cat">'+lnOpts(l)+'</select></label>'+
@@ -1134,7 +1130,7 @@ function vLaan(){
       ymSel(l,'afFri','Afdragsfri til og med')+ymSel(l,'end','Lånet udløber')+
       fld('Omkostning ved indfrielse',l.id,'cost',+l.cost?nf0.format(l.cost):null,'0')+
       fld('Ekstra afdrag pr. md efter salget',l.id,'extra',+l.extra?nf0.format(l.extra):null,'0')+'</div>'+
-      '<label class="row" style="gap:6px"><input type="checkbox" data-ln="'+l.id+'" data-lf="car"'+(l.car?' checked':'')+'> Bilen er pant for lånet (indfries først)</label>'+res+'</section>'});
+      '<label class="row" style="gap:6px"><input type="checkbox" data-ln="'+l.id+'" data-lf="car"'+(l.car?' checked':'')+'> Bilen er pant for lånet (indfries først)</label>'+(lnDone(l)?'<div><button class="btn ghost" type="button" data-act="lnclose" data-id="'+l.id+'">Færdig – klap sammen</button></div>':''))+res+'</section>'});
   // firmabil
   const carLoan=loans.find(l=>l.car&&l.cat);const carG=carLoan&&catById(carLoan.cat)?catById(carLoan.cat).g:(grp().find(g=>/bil/i.test(g.name))||{}).id;
   const carCats=st.cats.filter(c=>c.g===carG&&G(c.g).type==='expense'&&!(loans.some(l=>l.cat===c.id)));
@@ -1224,10 +1220,10 @@ function vSkat(){
     const c=taxCalc(p,{fribil:fbNow});const noFb=taxCalc(p,{fribil:0});const withFb=taxCalc(p,{fribil:fbAll});const fbStart=p.fribil==null&&!fbNow&&fbAll?payoffObj().month:null;
     const diff=p.slipNetto!=null&&p.brutto?c.netto-p.slipNetto:null;
     h+='<section class="panel lncard"><div class="row spread"><input class="inp gname" data-tp="'+p.id+'" data-tk="name" value="'+esc(p.name)+'" aria-label="Navn"><button class="x" type="button" data-act="tpdel" data-id="'+p.id+'" aria-label="Fjern '+esc(p.name)+'">✕</button></div>'+
-      '<div class="lnf">'+f(p,'Bruttoløn pr. md','brutto','fx 45.000')+f(p,'Pension, eget bidrag %','pensionPct','fx 4',1)+f(p,'Feriepenge-opsparing % (pensionsgivende)','feriePct','fx 12,5',1)+(p.feriePct==null&&p.pensionBase!=null?f(p,'Pension beregnes af (% af lønnen)','pensionBase','100',1):'')+f(p,'Pension, eget bidrag kr.','pensionKr','0')+f(p,'ATP pr. md','atp','fx 99')+
+      (tpDone(p)&&p.closed&&!(S.ui.tpOpen||{})[p.id]?'<div class="row spread" style="gap:8px"><span>Lønseddel: brutto '+kr(p.brutto)+' · træk '+String(p.traek).replace('.',',')+' % · fradrag '+kr(+p.fradrag||0)+' · <b>netto i dag '+kr(c.netto)+'</b>'+(diff!=null?(Math.abs(diff)<=50?' <span class="pos">✓ passer med lønsedlen</span>':' <span class="neg">afviger '+kr(diff)+'</span>'):'')+'</span><button class="btn" type="button" data-act="tpopen" data-id="'+p.id+'" style="padding:4px 10px">Ret lønseddel-tal</button></div>':'<div class="lnf">'+f(p,'Bruttoløn pr. md','brutto','fx 45.000')+f(p,'Pension, eget bidrag %','pensionPct','fx 4',1)+f(p,'Feriepenge-opsparing % (pensionsgivende)','feriePct','fx 12,5',1)+(p.feriePct==null&&p.pensionBase!=null?f(p,'Pension beregnes af (% af lønnen)','pensionBase','100',1):'')+f(p,'Pension, eget bidrag kr.','pensionKr','0')+f(p,'ATP pr. md','atp','fx 99')+
       f(p,'Trækprocent %','traek','fx 38',1)+f(p,'Fradrag pr. md','fradrag','fx 5.000')+f(p,'Fri bil – skattepligtig værdi pr. år','fribil','0')+f(p,'Træk efter skat pr. md','efterSkat','fx medarbejderlån')+
       f(p,'Netto på lønsedlen (til kontrol)','slipNetto','valgfrit')+
-      '<label class="field"><span class="label">Lønnen står i budgettet som</span><select class="inp" data-tp="'+p.id+'" data-tk="cat"><option value="">– ingen –</option>'+inc.map(x=>'<option value="'+x.id+'"'+(x.id===p.cat?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label></div>';
+      '<label class="field"><span class="label">Lønnen står i budgettet som</span><select class="inp" data-tp="'+p.id+'" data-tk="cat"><option value="">– ingen –</option>'+inc.map(x=>'<option value="'+x.id+'"'+(x.id===p.cat?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label></div>'+(tpDone(p)?'<div><button class="btn ghost" type="button" data-act="tpclose" data-id="'+p.id+'">Færdig – klap sammen</button></div>':''));
     h+=vExtras(p);
     if(p.brutto){
       h+='<div class="lnres"><div><span class="label">Udregning pr. md</span><br>'+(c.pens&&p.feriePct!=null?'<span class="muted" style="font-size:12.5px">Pensionsgrundlag '+kr(c.pgrund)+' = løn + '+String(p.feriePct).replace('.',',')+' % feriepenge + fritvalgsopsparing</span><br>':'')+'Brutto '+kr(c.brutto)+(c.atp?' − ATP '+kr(c.atp):'')+(c.pens?' − pension '+kr(c.pens):'')+' − AM-bidrag '+kr(c.am)+' − A-skat '+kr(c.askat)+(c.efter?' − træk efter skat '+kr(c.efter):'')+'</div>'+
@@ -1248,7 +1244,7 @@ function taxApply(){const t=taxObj();const ym=t.month||CUR;let n=0;const st=S.se
   for(const p of t.persons){if(!(p.brutto&&p.traek!=null&&p.cat))continue;const c=catById(p.cat);if(!c)continue;budFrom(c,ym,(x,m,y)=>taxCalc(p,{fribil:0,y}).netto);n++;
     const plans={};const pl=y=>plans[y]||(plans[y]=fvPlan(p,y));if((+p.fvPct||+p.fvPct2)&&!p.fvLoan){const fc=ensure('fv_'+p.id,'Fritvalg ('+p.name+')');budFrom(fc,ym,(x,m,y)=>pl(y).out[m-1].fvNet)}
     for(const e of (p.extras||[])){if(!+e.amt)continue;const ec=ensure('ex_'+e.id,(e.name||'Ekstra')+' ('+p.name+')');budFrom(ec,ym,(x,m,y)=>m===+e.m&&exOn(e,y)?netExtra(p,+e.amt,e.pens===false?0:pfLon(p,y)):0)}}
-  markDirty('settings');renderAll(true);toast('Nettoløn, fritvalg og ekstra udbetalinger er lagt i budgettet fra '+mLabel(ym,true))}
+  t.appliedSig=taxSig();markDirty('settings');renderAll(true);toast('Nettoløn, fritvalg og ekstra udbetalinger er lagt i budgettet fra '+mLabel(ym,true))}
 
 /* ---------- Fritvalg og ekstra udbetalinger ---------- */
 /* Fritvalg optjenes hver måned af (løn + fri bil/12 + ekstra udbetalinger i måneden) × fritvalgsprocent og udbetales i de valgte måneder
@@ -1298,7 +1294,7 @@ function vExtras(p){
 /* ---------- Gældfri-plan ---------- */
 /* Måned for måned fra næste måned: budgettets overskud (indtægter − udgifter, inkl. ferie) + frigjorte ydelser + engangsbeløb lægges i en pulje.
    Puljen over bufferen bruges som ekstra afdrag på lånene i den valgte rækkefølge (sneboldmetoden). Lånenes faste ydelser ligger allerede i budgettet. */
-function gpObj(){const st=S.settings;if(!st.gplan){const L=st.loans||[];const ml=L.find(l=>/medarbejder/i.test(l.name)),kl=L.find(l=>/køkken/i.test(l.name));
+function gpObj(){const st=S.settings;if(!st.loans)loanDefaults();if(!st.gplan){const L=st.loans||[];const ml=L.find(l=>/medarbejder/i.test(l.name)),kl=L.find(l=>/køkken/i.test(l.name));
   st.gplan={order:[ml,kl].filter(Boolean).map(l=>l.id),cash:null,buffer:20000,monthly:null,lumps:[],useCar:true}}return st.gplan}
 function budgetSurplus(ym){const y=+ym.slice(0,4),m=mNum(ym);let s=0;for(const c of S.settings.cats){const t=G(c.g).type;if(t==='ignore')continue;const v=budgetFor(c,m,y);s+=t==='income'?v:-v}return s}
 function gpCalc(){
@@ -1371,6 +1367,33 @@ function vPlan(){
   return h;
 }
 function gpMove(id,d){const o=gpObj().order;const i=o.indexOf(id),j=i+d;if(i<0||j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];markDirty('settings');renderAll(true)}
+
+/* ---------- Navigation og overblik ---------- */
+const GROUPS={plan:[['plan','Gældfri-plan'],['laan','Lån og bilsalg']],mere:[['likviditet','Likviditet'],['fordeling','Fordeling'],['regler','Regler'],['import','Import']]};
+const TABGROUP={plan:'plan',laan:'plan',likviditet:'mere',fordeling:'mere',regler:'mere',import:'mere'};
+function subSeg(){const g=TABGROUP[S.ui.tab];if(!g)return '';return '<div class="seg acctabs" role="group" aria-label="Undermenu">'+GROUPS[g].map(([t,n])=>'<button type="button" data-act="tab" data-tab="'+t+'" aria-pressed="'+(S.ui.tab===t)+'">'+n+'</button>').join('')+'</div>'}
+function vMere(){const it=[['likviditet','Likviditet','Saldoen 12 måneder frem'],['fordeling','Fordeling','Lønnen fordelt på konti og opsparingsmål'],['regler','Kategorier og regler','Hvordan bankposterne sorteres'],['import','Import og konto','Bankfil fra Nykredit (pc), eksport og log ud']];
+  return '<div><h1>Mere</h1></div><div class="kpis">'+it.map(([t,n,d])=>'<button type="button" class="kpi" style="text-align:left;cursor:pointer" data-act="tab" data-tab="'+t+'"><span class="v" style="font-family:var(--f-ui);font-size:18px">'+n+' ›</span><span class="s">'+d+'</span></button>').join('')+'</div>'}
+const taxSig=()=>{const t=S.settings.tax;return t?JSON.stringify(t.persons.map(p=>{const o=Object.assign({},p);delete o.slipNetto;delete o.name;delete o.closed;return o})):''};
+function vStatus(){
+  if(S.demo)return '';const st=S.settings;const items=[];const ny=TODAY.getFullYear()+1;
+  const nk=inbox().length;if(nk)items.push(['warn',nk+' bankposter mangler kategori','openkat','']);
+  const t=st.tax;
+  if(!t||!t.persons.some(p=>p.brutto&&p.traek!=null))items.push(['info','Skriv tallene fra lønsedlen under Løn','tab','skat']);
+  else{for(const p of t.persons)if((+p.fvPct||+p.fvPct2)&&!fvMonthsFor(p,ny).length)items.push(['info','Fritvalg '+ny+' ('+p.name+'): vælg udbetalingsmåneder','tab','skat']);
+    if(t.appliedSig!==taxSig())items.push(['warn','Løn eller fritvalg er ændret – tryk “Brug i budgettet” under Løn','tab','skat'])}
+  const loans=st.loans||[];const gp=st.gplan;
+  const miss=loans.filter(l=>(!gp||gp.order.includes(l.id)||l.car)&&(l.bal==null||l.bal===''));if(miss.length)items.push(['warn','Restgæld mangler: '+miss.map(l=>l.name).join(', '),'tab','laan']);
+  if(gp&&gp.cash==null)items.push(['info','Skriv jeres opsparing i Gældfri-planen','tab','plan']);
+  const last=allTx().reduce((m,x)=>x.d>m?x.d:m,'');if(last&&dayNo(CUR+'-'+pad(TODAY.getDate()))-dayNo(last)>35)items.push(['info','Seneste bankpost er fra '+last.split('-').reverse().join('-')+' – importér en ny bankfil på pc’en','tab','import']);
+  let g='';
+  if(gp&&gp.order.length&&loans.some(l=>gp.order.includes(l.id)&&l.bal!=null&&l.bal!=='')){const R=gpCalc();const n0=R.rows[0];
+    g='<div class="kpis">'+R.order.map(l=>{const z=R.S0.find(q=>q.l===l);return kpi(esc(l.name),z&&z.paid?'Væk '+mLabel(z.paid):'–','Restgæld i dag '+kr(+l.bal||0),z&&z.paid?'pos':'')}).join('')+
+      (n0?kpi('Ekstra afdrag i '+MONL[mNum(n0.ym)-1],kr(Object.values(n0.pays).reduce((s,v)=>s+v,0)),'<button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="plan">se planen ›</button>'):'')+'</div>'}
+  return '<section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Status</h2>'+g+
+    (items.length?'<div style="display:flex;flex-direction:column;gap:6px">'+items.map(([k,txt,act,tab])=>'<div class="row spread" style="border-top:1px solid var(--line);padding-top:6px;gap:8px"><span><span class="pill '+(k==='warn'?'warn':'info')+'">'+(k==='warn'?'Gør nu':'Tip')+'</span> '+esc(txt)+'</span><button class="btn" type="button" data-act="'+act+'"'+(tab?' data-tab="'+tab+'"':'')+' style="padding:4px 10px">Gå til ›</button></div>').join('')+'</div>':'<p class="pos" style="margin:0">✓ Alt er opdateret.</p>')+'</section>'}
+const tpDone=p=>!!(p.brutto&&p.traek!=null);
+const lnDone=l=>l.bal!=null&&l.bal!==''&&l.rate!=null;
 
 /* ---------- Transaktioner ---------- */
 function vTrans(){
@@ -1776,6 +1799,8 @@ document.addEventListener('click',e=>{
     case 'lnup':loanMove(a.dataset.id,-1);break;
     case 'lndown':loanMove(a.dataset.id,1);break;
     case 'lnsort':loanSort();break;
+    case 'tpopen':case 'tpclose':{S.ui.tpOpen=S.ui.tpOpen||{};S.ui.tpOpen[a.dataset.id]=act==='tpopen';if(act==='tpclose'){const p=taxObj().persons.find(x=>x.id===a.dataset.id);if(p){p.closed=true;markDirty('settings')}}renderAll(true);break}
+    case 'lnopen':case 'lnclose':{S.ui.lnOpen=S.ui.lnOpen||{};S.ui.lnOpen[a.dataset.id]=act==='lnopen';if(act==='lnclose'){const l=(S.settings.loans||[]).find(x=>x.id===a.dataset.id);if(l){l.closed=true;markDirty('settings')}}renderAll(true);break}
     case 'gladd':{const gp=gpObj();gp.lumps=gp.lumps||[];gp.lumps.push({id:'g'+Date.now().toString(36),name:'Skat retur',amt:0,ym:addM(CUR,5)});markDirty('settings');renderAll(true);break}
     case 'gldel':{const gp=gpObj();gp.lumps=(gp.lumps||[]).filter(x=>x.id!==a.dataset.id);markDirty('settings');renderAll(true);break}
     case 'gpup':gpMove(a.dataset.id,-1);break;
