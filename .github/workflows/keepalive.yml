@@ -1,0 +1,12 @@
+# Holder Supabase-projektet vågent (gratis-planen pauser efter 7 dage uden aktivitet).
+# Nøglen er den offentlige publishable-nøgle, som også står i index.html. Der læses ingen data.
+name: Hold databasen vågen
+on:
+  schedule:
+    - cron: "0 6 * * 2,5"   # tirsdag og fredag kl. 06 UTC
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS "https://chkapakamhqpbaruhvso.supabase.co/auth/v1/health" -H "apikey: sb_publishable_4SC8zQBJLYt_mUIm0soacA_1rpEZJq0"

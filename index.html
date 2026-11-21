@@ -531,8 +531,8 @@ function startOwn(){S.demo=false;S.settings=defaultSettings(false);S.months={};m
 
 /* ---------- storage ---------- */
 /* ---------- storage: Supabase (egen database, hver bruger kan kun læse sine egne rækker) ---------- */
-const SB_URL='__SB_URL__';
-const SB_KEY='__SB_KEY__';
+const SB_URL='https://chkapakamhqpbaruhvso.supabase.co';
+const SB_KEY='sb_publishable_4SC8zQBJLYt_mUIm0soacA_1rpEZJq0';
 const Store={mode:'memory',sb:null,uid:null,email:'',dirty:new Set(),timers:{},running:{},again:{}};
 function setStatus(t,err){const el=$('#status');el.textContent=t;el.classList.toggle('err',!!err)}
 function savedStatus(){
