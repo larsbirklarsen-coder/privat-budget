@@ -1092,7 +1092,8 @@ const krA=v=>isFinite(v)?kr(v):'aldrig';
 function lnOpts(l){const ex=S.settings.cats.filter(c=>G(c.g).type==='expense');
   return '<option value="">– ingen budgetpost –</option><option value="__lon"'+(l.viaLon?' selected':'')+'>Trukket i lønnen</option>'+grp().filter(g=>g.type==='expense').map(g=>'<optgroup label="'+esc(g.name)+'">'+ex.filter(c=>c.g===g.id).map(c=>'<option value="'+c.id+'"'+(!l.viaLon&&l.cat===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</optgroup>').join('')}
 function vLaan(){
-  loanDefaults();const st=S.settings;const po=payoffObj();const P=payoffCalc();const loans=st.loans||[];
+  loanDefaults();const st=S.settings;const po=payoffObj();const P=payoffCalc();const loans=st.loans||[];const GR=gpCalc();
+  const lumpPill=x=>{const i=GR.lumpInfo[x.id];if(!i||!+x.amt)return '';if(i.done)return '<span class="pill info">Lånet er allerede betalt</span>';const buf=kr(+gpObj().buffer||0);return i.after>=-0.5?'<span class="pill ok" title="Bufferen på '+buf+' er holdt ude">✓ Der er råd · '+kr(i.after)+' tilbage over bufferen</span>':'<span class="pill bad" title="Bufferen på '+buf+' er holdt ude">✗ Mangler '+kr(-i.after)+' · maks. '+kr(Math.max(0,i.avail))+'</span>'};
   const fld=(lbl,id,f,v,ph,extra)=>'<label class="field"><span class="label">'+lbl+'</span><input class="inp num" inputmode="decimal" data-ln="'+id+'" data-lf="'+f+'" value="'+(v==null||v===''?'':esc(String(v)))+'" placeholder="'+(ph||'')+'"'+(extra||'')+'></label>';
   const months=Array.from({length:25},(_,i)=>addM(CUR,i));
   let h='<div><h1>Lån og indfrielse</h1><p class="sub">Skriv restgæld, rente og ydelse for hvert lån. Skriv derefter, hvad bilen sælges for. Så kan du se, hvad der kan indfries, hvad der er tilbage, og hvad det betyder hver måned. Intet i dit budget ændres, før du trykker <b>Gennemfør i budgettet</b>.</p></div>';
@@ -1131,7 +1132,7 @@ function vLaan(){
       ymSel(l,'afFri','Afdragsfri til og med')+ymSel(l,'end','Lånet udløber')+
       fld('Omkostning ved indfrielse',l.id,'cost',+l.cost?nf0.format(l.cost):null,'0')+
       fld('Ekstra afdrag pr. md efter salget',l.id,'extra',+l.extra?nf0.format(l.extra):null,'0')+'</div>'+
-      '<div style="display:flex;flex-direction:column;gap:6px"><span class="label">Engangsafdrag</span>'+(l.lumps||[]).map(x=>'<div class="row" style="gap:6px"><input class="inp num" style="width:120px" inputmode="decimal" data-ll="'+x.id+'" data-ln2="'+l.id+'" data-llf="amt" value="'+(x.amt?nf0.format(x.amt):'')+'" placeholder="beløb" aria-label="Beløb"><select class="inp" data-ll="'+x.id+'" data-ln2="'+l.id+'" data-llf="ym" aria-label="Måned">'+Array.from({length:49},(_,i)=>addM(CUR,i+1)).map(k=>'<option value="'+k+'"'+(k===x.ym?' selected':'')+'>'+mLabel(k)+'</option>').join('')+'</select><button class="x" type="button" data-act="lldel" data-id="'+x.id+'" data-l="'+l.id+'" aria-label="Fjern">✕</button></div>').join('')+
+      '<div style="display:flex;flex-direction:column;gap:6px"><span class="label">Engangsafdrag</span>'+(l.lumps||[]).map(x=>'<div class="row" style="gap:6px"><input class="inp num" style="width:120px" inputmode="decimal" data-ll="'+x.id+'" data-ln2="'+l.id+'" data-llf="amt" value="'+(x.amt?nf0.format(x.amt):'')+'" placeholder="beløb" aria-label="Beløb"><select class="inp" data-ll="'+x.id+'" data-ln2="'+l.id+'" data-llf="ym" aria-label="Måned">'+Array.from({length:49},(_,i)=>addM(CUR,i+1)).map(k=>'<option value="'+k+'"'+(k===x.ym?' selected':'')+'>'+mLabel(k)+'</option>').join('')+'</select>'+lumpPill(x)+'<button class="x" type="button" data-act="lldel" data-id="'+x.id+'" data-l="'+l.id+'" aria-label="Fjern">✕</button></div>').join('')+
       '<div><button class="btn" type="button" data-act="lladd" data-id="'+l.id+'" style="padding:4px 10px">＋ Tilføj engangsafdrag</button></div></div>'+
       '<label class="row" style="gap:6px"><input type="checkbox" data-ln="'+l.id+'" data-lf="car"'+(l.car?' checked':'')+'> Bilen er pant for lånet (indfries først)</label>'+(lnDone(l)?'<div><button class="btn ghost" type="button" data-act="lnclose" data-id="'+l.id+'">Færdig – klap sammen</button></div>':''))+res+'</section>'});
   // firmabil
@@ -1308,7 +1309,7 @@ function gpCalc(){
   const car=gp.useCar&&+po.price&&!po.applied?po:null;const carLoan=car&&S0.find(x=>x.l.car);
   const stopSum=car?(po.stopCats||[]).reduce((s,id)=>{const c=catById(id);return s+(c?curPay(c):0)},0):0;const fb=car?poFribil():0;
   let pool=Math.max(0,(+gp.cash||0)-(+gp.buffer||0));const rows=[];let freed=0,carEff=0;const fvMonthly=loans.reduce((s,l)=>s+fvExtraFor(l.id),0);
-  let ym=addM(CUR,1);
+  const lumpInfo={};let ym=addM(CUR,1);
   for(let i=0;i<120;i++){
     const base=gp.monthly!=null&&gp.monthly!==''?+gp.monthly:budgetSurplus(ym);
     let inflow=base+freed+carEff+fvMonthly;let lump=0;
@@ -1320,17 +1321,18 @@ function gpCalc(){
     // faste ydelser og renter
     for(const x of S0){if(x.paid||x.bal<=0)continue;const it=x.bal*x.r;x.bal=x.bal+it-x.pm;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
     const pays={};let saving=null;
+    const avail=pool;
     // engangsafdrag på lånene (betales af puljen)
-    for(const x of S0){if(x.paid||x.bal<=0)continue;let once=0;for(const q of (x.l.lumps||[]))if(q.ym===ym)once+=+q.amt||0;if(!once)continue;const p=Math.min(once,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
+    for(const x of S0){if(x.paid||x.bal<=0){for(const q of (x.l.lumps||[]))if(q.ym===ym)lumpInfo[q.id]={done:true};continue}let once=0;for(const q of (x.l.lumps||[]))if(q.ym===ym){once+=+q.amt||0;lumpInfo[q.id]={avail:pool,after:pool-Math.min(+q.amt||0,x.bal)}}if(!once)continue;const p=Math.min(once,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
     // ekstra afdrag i rækkefølge; lån med 'spar op' indfries først, når puljen dækker restgæld + omkostning
     for(const x of S0.filter(z=>z.inPlan).sort((a,b)=>order.indexOf(a.l)-order.indexOf(b.l))){if(x.paid||x.bal<=0)continue;
       if(lnSave(x.l)){const need=x.bal+(+x.l.cost||0);if(pool>=need){pool-=need;pays[x.l.id]=(pays[x.l.id]||0)+need;x.bal=0;x.paid=ym;freed+=x.pm;continue}saving={id:x.l.id,need,have:Math.max(0,pool)};break}
       if(pool<=0)break;const p=Math.min(pool,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
-    rows.push({ym,base,inflow,lump,pays,saving,pool,debt:S0.filter(z=>z.inPlan).reduce((s,z)=>s+z.bal,0),bals:Object.fromEntries(S0.map(z=>[z.l.id,z.bal]))});
+    rows.push({ym,base,inflow,lump,pays,saving,avail,pool,debt:S0.filter(z=>z.inPlan).reduce((s,z)=>s+z.bal,0),bals:Object.fromEntries(S0.map(z=>[z.l.id,z.bal]))});
     if(S0.filter(z=>z.inPlan).every(z=>z.paid)&&i>=2)break;
     ym=addM(ym,1);
   }
-  return {rows,S0,order,pool,car,carLoan,fvMonthly,gp,po}}
+  return {rows,S0,order,pool,car,carLoan,fvMonthly,gp,po,lumpInfo}}
 function gpChart(R){
   const rows=R.rows;if(rows.length<2)return '';const W=760,H=220,L=64,Rr=12,T=12,B=30;const mx=Math.max(1,...rows.map(r=>r.debt),R.S0.filter(z=>z.inPlan).reduce((s,z)=>s+(+z.l.bal||0),0));
   const x=i=>L+(W-L-Rr)*(i/(rows.length-1)),y=v=>T+(H-T-B)*(1-v/mx);let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Restgæld på planens lån">';
@@ -1350,7 +1352,7 @@ function vPlan(){
   // denne måned
   const n0=R.rows[0];if(n0){const pays=Object.entries(n0.pays).filter(([,v])=>v>0.5);
     const lonLoan=loans.find(l=>l.viaLon&&n0.pays[l.id]);const tp=(st.tax&&st.tax.persons||[])[0];
-    h+='<section class="panel"><h2>'+mLabel(n0.ym,true).replace(/^./,c=>c.toUpperCase())+': det skal du gøre</h2>'+
+    h+='<section class="panel"><h2>'+mLabel(n0.ym,true).replace(/^./,c=>c.toUpperCase())+': det skal du gøre</h2><p class="sub" style="margin:4px 0 0">Der er råd til op til <b>'+kr(Math.max(0,n0.avail))+'</b> i ekstra afdrag denne måned (opsparing over bufferen + månedens overskud).</p>'+(n0.pool<-0.5?'<div class="callout bad" style="margin-top:8px"><p><b>Det rækker ikke.</b> Engangsafdragene får opsparingen '+kr(-n0.pool)+' under bufferen. Sænk et engangsafdrag eller flyt det til en senere måned.</p></div>':'')+
       (pays.length?'<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+pays.map(([id,v])=>{const l=loans.find(q=>q.id===id);return '<div class="row spread" style="border-top:1px solid var(--line);padding-top:6px"><span>Ekstra afdrag på <b>'+esc(l.name)+'</b>'+(l.viaLon?' <span class="muted">(via lønnen)</span>':'')+'</span><b class="num">'+kr(v)+'</b></div>'}).join('')+'</div>':(n0.saving?'<p>Spar op til <b>'+esc((loans.find(q=>q.id===n0.saving.id)||{}).name||'')+'</b>: '+kr(n0.saving.have)+' af '+kr(n0.saving.need)+'. Lad pengene stå på opsparingen.</p>':'<p class="muted">Intet ekstra afdrag – puljen er under bufferen.</p>'))+
       (lonLoan&&tp&&tp.brutto?'<p class="sub" style="margin-top:8px">Trækkes det i lønnen, får '+esc(tp.name)+' ca. <b>'+kr(Math.max(0,taxCalc(tp,{fribil:0}).netto-n0.pays[lonLoan.id]))+'</b> udbetalt den måned. Resten af måneden lever I af opsparingen.</p>':'')+'</section>'}
   // indstillinger
@@ -1371,7 +1373,7 @@ function vPlan(){
   // graf + måned for måned
   h+='<section class="panel chart"><h2>Restgæld på planens lån</h2>'+gpChart(R)+'</section>';
   h+='<div class="tablewrap"><table class="gpt"><thead><tr><th>Måned</th><th class="r">Til lån</th><th>Ekstra afdrag</th><th class="r">Restgæld</th><th class="r">Pulje</th></tr></thead><tbody>'+
-    R.rows.map(r=>'<tr><td>'+mLabel(r.ym)+'</td><td class="r num '+(r.inflow+r.lump<0?'neg':'')+'">'+kr(r.inflow+r.lump)+(r.lump?'<div class="muted" style="font-size:11.5px">heraf engang '+kr(r.lump)+'</div>':'')+'</td><td style="font-size:13px">'+((Object.entries(r.pays).filter(([,v])=>v>0.5).map(([id,v])=>{const l=loans.find(q=>q.id===id)||{};return (lnSave(l)?'<b>Indfri</b> ':'')+esc(l.name||'')+' '+kr(v)}).join('<br>'))+(r.saving?'<div class="muted">Spar op til '+esc((loans.find(q=>q.id===r.saving.id)||{}).name||'')+': '+kr(r.saving.have)+' af '+kr(r.saving.need)+'</div>':'')||'<span class="muted">–</span>')+'</td><td class="r num">'+kr(r.debt)+'</td><td class="r num">'+kr(r.pool)+'</td></tr>').join('')+'</tbody></table></div>';
+    R.rows.map(r=>'<tr><td>'+mLabel(r.ym)+'</td><td class="r num '+(r.inflow+r.lump<0?'neg':'')+'">'+kr(r.inflow+r.lump)+(r.lump?'<div class="muted" style="font-size:11.5px">heraf engang '+kr(r.lump)+'</div>':'')+'</td><td style="font-size:13px">'+((Object.entries(r.pays).filter(([,v])=>v>0.5).map(([id,v])=>{const l=loans.find(q=>q.id===id)||{};return (lnSave(l)?'<b>Indfri</b> ':'')+esc(l.name||'')+' '+kr(v)}).join('<br>'))+(r.saving?'<div class="muted">Spar op til '+esc((loans.find(q=>q.id===r.saving.id)||{}).name||'')+': '+kr(r.saving.have)+' af '+kr(r.saving.need)+'</div>':'')||'<span class="muted">–</span>')+'</td><td class="r num">'+kr(r.debt)+'</td><td class="r num '+(r.pool<-0.5?'neg':'')+'">'+kr(r.pool)+(r.pool<-0.5?'<div style="font-size:11.5px">under bufferen</div>':'')+'</td></tr>').join('')+'</tbody></table></div>';
   h+='<p class="muted" style="font-size:13px">Overslag: renter regnes pr. måned, og overskuddet tager budgettet for gode varer. Er budgettet ikke opdateret med løn, fritvalg og bilsalg, så tryk først “Brug i budgettet” under Løn &amp; skat og “Gennemfør” under Lån – eller skriv et fast beløb i “Til lån hver måned”.</p>';
   return h;
 }
