@@ -1046,23 +1046,41 @@ function payoffObj(){const st=S.settings;return st.payoff=st.payoff||{month:addM
 function simLoan(bal,rate,pm,maxN){let b=+bal||0,n=0,int=0;const r=(+rate||0)/1200;const lim=maxN==null?600:maxN;
   while(b>0.5&&n<lim){const it=b*r;if(pm<=it&&maxN==null)return {n:Infinity,int:Infinity,b};int+=it;b=b+it-pm;n++}
   return {n,int,b:Math.max(0,b)}}
+/* Lån med afdragsfrihed: til og med måneden afFri betales kun rente + bidrag (restgælden står stille).
+   Derefter betales lånet ud over den resterende løbetid til udløbet (annuitet). Rente og bidrag lægges sammen. */
+const lnRate=l=>(+l.rate||0)+(+l.bidrag||0);
+function simL(l,bal,startYm,extra,maxN){
+  let b=+bal||0,n=0,int=0,ym=startYm;const r=lnRate(l)/1200;const lim=maxN==null?720:maxN;const base=payM(l);
+  let pm=base,newPay=null;const hasAf=!!l.afFri,hasEnd=!!l.end;
+  while(b>0.5&&n<lim){
+    const it=b*r;let pay;
+    if(hasAf&&ym<=l.afFri)pay=it+(extra||0);
+    else{
+      if(hasAf&&newPay==null){const left=hasEnd?Math.max(1,mDiff(ym,l.end)+1):null;newPay=left?(r?b*r/(1-Math.pow(1+r,-left)):b/left):base;pm=newPay}
+      pay=pm+(extra||0);
+      if(maxN==null&&pay<=it)return {n:Infinity,int:Infinity,b,newPay};
+    }
+    int+=it;b=b+it-pay;n++;ym=addM(ym,1);
+  }
+  if(hasAf&&newPay==null&&b>0.5){const tr=addM(l.afFri,1);const left=hasEnd?Math.max(1,mDiff(tr,l.end)+1):null;const r2=r;newPay=left?(r2?b*r2/(1-Math.pow(1+r2,-left)):b/left):base}
+  return {n,int,b:Math.max(0,b),newPay};
+}
 function payoffCalc(){
   const st=S.settings;const po=payoffObj();const loans=st.loans||[];
   const n=Math.max(0,mDiff(CUR,po.month||CUR));
   const cash0=Math.max(0,(+po.price||0)-(+po.saleCost||0));let cash=cash0;
-  const rows=loans.map(l=>{const pm=payM(l);const fv=fvExtraFor(l.id);const before=simLoan(l.bal,l.rate,pm+fv);const first=simLoan(l.bal,l.rate,pm+fv,n);return {l,pm,fv,before,first,at:first.b}});
+  const rows=loans.map(l=>{const pm=payM(l);const fv=fvExtraFor(l.id);const before=simL(l,l.bal,CUR,fv);const first=simL(l,l.bal,CUR,fv,n);return {l,pm,fv,before,first,at:first.b}});
   for(const r of rows){const cost=+r.l.cost||0;
     if(r.l.bal==null||r.l.bal===''){r.status='nodata';r.paid=0;r.rest=0;continue}
     if(r.at<=0.5){r.status='done';r.paid=0;r.rest=0}
     else if(cash<=0){r.status='keep';r.paid=0;r.rest=r.at}
     else if(cash>=r.at+cost){r.status='full';r.paid=r.at+cost;cash-=r.paid;r.rest=0}
     else{r.status='part';r.paid=cash;r.rest=Math.max(0,r.at-Math.max(0,cash-cost));cash=0}
-    const pmA=r.pm+(+r.l.extra||0)+(r.fv||0);
-    r.after=r.rest>0.5?simLoan(r.rest,r.l.rate,pmA):{n:0,int:0,b:0};
+    r.after=r.rest>0.5?simL(r.l,r.rest,po.month,(+r.l.extra||0)+(r.fv||0)):{n:0,int:0,b:0,newPay:null};
     r.intBefore=r.before.int;r.intAfter=r.first.int+r.after.int+(r.status==='full'||r.status==='part'?cost:0);
     r.saved=isFinite(r.intBefore)&&isFinite(r.intAfter)?r.intBefore-r.intAfter:0;
-    r.endBefore=isFinite(r.before.n)?addM(CUR,r.before.n):null;
-    r.endAfter=r.status==='full'?po.month:(isFinite(r.after.n)?addM(po.month,r.after.n):null);
+    r.endBefore=isFinite(r.before.n)?addM(CUR,Math.max(0,r.before.n-1)):null;
+    r.endAfter=r.status==='full'?po.month:(isFinite(r.after.n)?addM(po.month,Math.max(0,r.after.n-1)):null);
   }
   const full=rows.filter(r=>r.status==='full');
   const freedBud=full.filter(r=>!r.l.viaLon).reduce((s,r)=>s+r.pm,0),freedLon=full.filter(r=>r.l.viaLon).reduce((s,r)=>s+r.pm,0);
@@ -1093,10 +1111,12 @@ function vLaan(){
     const pill={full:'<span class="pill ok">Indfries helt</span>',part:'<span class="pill warn">Delvist indfriet</span>',keep:'<span class="pill info">Kører videre</span>',done:'<span class="pill ok">Betalt før salget</span>',nodata:'<span class="pill bad">Mangler restgæld</span>'}[r.status];
     let res='';
     if(r.status!=='nodata'){
-      res='<div class="lnres"><div><span class="label">I dag</span><br>'+kr(r.pm)+' pr. md'+(r.fv?' + fritvalg ca. '+kr(r.fv):'')+' · færdig '+(r.endBefore?mLabel(r.endBefore):'aldrig – ydelsen dækker ikke renten')+(l.rate!=null&&isFinite(r.intBefore)?' · renter '+kr(r.intBefore):'')+'</div>';
+      const per=+l.freq===3?' pr. kvartal':' pr. md',fq=+l.freq||1;const afTxt=(np)=>l.afFri&&np?'<br>Afdragsfri til '+mLabel(l.afFri)+'. Derefter ca. <b>'+kr(np*fq)+per+'</b>'+(l.end?' til '+mLabel(l.end):' (skriv udløb)'):'';
+      res='<div class="lnres"><div><span class="label">I dag</span><br>'+kr(r.pm)+' pr. md'+(r.fv?' + fritvalg ca. '+kr(r.fv):'')+' · færdig '+(r.endBefore?mLabel(r.endBefore):'aldrig – ydelsen dækker ikke renten')+(l.rate!=null&&isFinite(r.intBefore)?' · renter'+(l.bidrag?' og bidrag ':' ')+kr(r.intBefore):'')+afTxt(r.before.newPay)+'</div>';
       if(r.status==='full')res+='<div><span class="label">Med salget</span><br>Indfries i '+mLabel(po.month,true)+' med '+kr(r.paid)+' Ydelsen på '+kr(r.pm)+' forsvinder'+(l.viaLon?' (lønnen stiger)':'')+'.</div>';
-      else if(r.status==='part')res+='<div><span class="label">Med salget</span><br>'+kr(r.paid)+' betales af, restgæld '+kr(r.rest)+', færdig '+(r.endAfter?mLabel(r.endAfter,true):'aldrig')+(r.endAfter&&r.after.n?' (om '+r.after.n+' mdr. efter salget)':'')+'.</div>';
+      else if(r.status==='part')res+='<div><span class="label">Med salget</span><br>'+kr(r.paid)+' betales af, restgæld '+kr(r.rest)+', færdig '+(r.endAfter?mLabel(r.endAfter,true):'aldrig')+(r.endAfter&&r.after.n?' (om '+r.after.n+' mdr. efter salget)':'')+'.'+afTxt(r.after.newPay)+'</div>';
       else if(r.status==='keep')res+='<div><span class="label">Med salget</span><br>Pengene rækker ikke hertil. Restgæld ved salget '+kr(r.rest)+', færdig '+(r.endAfter?mLabel(r.endAfter,true):'aldrig')+'.</div>';
+      if(l.afFri&&l.cat&&r.before.newPay&&r.status!=='full')res+='<div><span class="label">Budget</span><br><button class="btn" type="button" data-act="lnfuture" data-id="'+l.id+'" style="padding:4px 10px">Læg ydelsen fra '+mLabel(addM(l.afFri,1))+' i budgettet</button></div>';
       if((r.status==='full'||r.status==='part')&&l.rate!=null&&r.saved>0)res+='<div><span class="label">Sparet</span><br>Ca. '+kr(r.saved)+' i renter</div>';
       res+='</div>'}
     h+='<section class="panel lncard"><div class="row spread"><input class="inp gname" data-ln="'+l.id+'" data-lf="name" value="'+esc(l.name)+'" aria-label="Navn på lån"><div class="row" style="gap:4px">'+pill+
@@ -1105,6 +1125,9 @@ function vLaan(){
       fld('Ydelse',l.id,'pay',l.pay?nf0.format(l.pay):null,'0')+
       '<label class="field"><span class="label">Hvor tit</span><select class="inp" data-ln="'+l.id+'" data-lf="freq"><option value="1"'+(+l.freq!==3?' selected':'')+'>Pr. måned</option><option value="3"'+(+l.freq===3?' selected':'')+'>Pr. kvartal</option></select></label>'+
       '<label class="field"><span class="label">Betales via</span><select class="inp" data-ln="'+l.id+'" data-lf="cat">'+lnOpts(l)+'</select></label>'+
+      fld('Bidrag % pr. år',l.id,'bidrag',l.bidrag==null?null:String(l.bidrag).replace('.',','),'0')+
+      '<label class="field"><span class="label">Afdragsfri til og med</span><input class="inp" type="month" data-ln="'+l.id+'" data-lf="afFri" value="'+esc(l.afFri||'')+'"></label>'+
+      '<label class="field"><span class="label">Lånet udløber</span><input class="inp" type="month" data-ln="'+l.id+'" data-lf="end" value="'+esc(l.end||'')+'"></label>'+
       fld('Omkostning ved indfrielse',l.id,'cost',+l.cost?nf0.format(l.cost):null,'0')+
       fld('Ekstra afdrag pr. md efter salget',l.id,'extra',+l.extra?nf0.format(l.extra):null,'0')+'</div>'+
       '<label class="row" style="gap:6px"><input type="checkbox" data-ln="'+l.id+'" data-lf="car"'+(l.car?' checked':'')+'> Bilen er pant for lånet (indfries først)</label>'+res+'</section>'});
@@ -1142,6 +1165,11 @@ function budFrom(cat,ym,fn){
     const arr=Array.from({length:12},(_,i)=>budgetFor(cat,i+1,y));for(let i=(y===y0?m0-1:0);i<12;i++)arr[i]=Math.max(0,Math.round(fn(arr[i],i+1,y)));
     ys[y][cat.id]={amt:0,f:'m',m:arr,s:1}}
 }
+/* sæt budgetposten til den nye ydelse fra måneden efter afdragsfriheden (kun i de måneder, hvor der betales) */
+function loanFutureToBudget(l,bal,startYm,np){const c=l.cat&&catById(l.cat);if(!c||!l.afFri||!np)return false;const fq=+l.freq||1;const from=addM(l.afFri,1);
+  const pays=new Set();for(let m=1;m<=12;m++)if(budgetFor(c,m,+from.slice(0,4))>0)pays.add(m);if(!pays.size)for(let m=fq;m<=12;m+=fq)pays.add(m);
+  budFrom(c,from,(v,m)=>pays.has(m)?np*fq:0);if(l.end)budFrom(c,addM(l.end,1),()=>0);return true}
+function loanFuture(id){const P=payoffCalc();const r=P.rows.find(x=>x.l.id===id);if(!r||!r.before.newPay)return;if(loanFutureToBudget(r.l,r.l.bal,CUR,r.before.newPay)){markDirty('settings');renderAll(true);toast(r.l.name+': '+kr(r.before.newPay*(+r.l.freq||1))+(+r.l.freq===3?' pr. kvartal':' pr. md')+' fra '+mLabel(addM(r.l.afFri,1),true)+' er lagt i budgettet')}}
 function payoffApply(){
   const st=S.settings;const po=payoffObj();const P=payoffCalc();const ym=po.month;
   po.applied={at:CUR+'-'+pad(TODAY.getDate()),years:clone(st.years||{}),cats:clone(st.cats)};
@@ -1150,7 +1178,8 @@ function payoffApply(){
     if(r.status==='full'){if(l.viaLon){if(inc)budFrom(inc,ym,v=>v+r.pm)}else if(c&&!goalsFor(c.id))budFrom(c,ym,()=>0);n++;continue}
     if((r.status==='part'||r.status==='keep')&&r.endAfter){
       if(l.viaLon){if(inc){if(extra)budFrom(inc,ym,v=>v-extra);budFrom(inc,r.endAfter,v=>v+r.pm+extra)}}
-      else if(c&&!goalsFor(c.id)){if(extra)budFrom(c,ym,v=>v+extra);budFrom(c,r.endAfter,()=>0)}n++}}
+      else if(c&&!goalsFor(c.id)){if(l.afFri&&r.status==='part'&&ym<=l.afFri){const fq=+l.freq||1;const ip=r.rest*lnRate(l)/1200*fq;budFrom(c,ym,v=>v>0?ip:0)}
+        if(extra)budFrom(c,ym,v=>v+extra);if(l.afFri&&r.after&&r.after.newPay)loanFutureToBudget(l,r.rest,ym,r.after.newPay);budFrom(c,r.endAfter,()=>0)}n++}}
   for(const id of (po.stopCats||[])){const c=catById(id);if(c)budFrom(c,ym,()=>0)}
   const fbv=poFribil();if(fbv){let fb=st.cats.find(c=>c.id==='fribil');
     if(!fb){const carLoan=(st.loans||[]).find(l=>l.car&&l.cat);const g=carLoan&&catById(carLoan.cat)?catById(carLoan.cat).g:(grp().find(x=>x.type==='expense')||{}).id;fb={id:'fribil',name:'Skat af fri bil',g,b:{amt:0,f:1,s:1}};st.cats.push(fb)}
@@ -1659,6 +1688,7 @@ document.addEventListener('click',e=>{
     case 'lnup':loanMove(a.dataset.id,-1);break;
     case 'lndown':loanMove(a.dataset.id,1);break;
     case 'lnsort':loanSort();break;
+    case 'lnfuture':loanFuture(a.dataset.id);break;
     case 'poapply':payoffApply();break;
     case 'poundo':payoffUndo();break;
     case 'tpadd':{const t=taxObj();t.persons.push({id:'p'+Date.now().toString(36),name:'Ny person',cat:'',brutto:null,pensionPct:null,pensionKr:null,atp:null,traek:null,fradrag:null,fribil:null,efterSkat:null,slipNetto:null});markDirty('settings');renderAll(true);break}
@@ -1690,7 +1720,7 @@ document.addEventListener('change',e=>{
   if(el.dataset.tp){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const k=el.dataset.tk;if(k==='name')p.name=el.value.trim()||p.name;else if(k==='cat'||k==='fvLoan')p[k]=el.value;else{const v=el.value.trim()===''?null:parseAmt(el.value);p[k]=v==null||isNaN(v)?null:Math.abs(v)}markDirty('settings');laterRender()}return}
   if(el.dataset.tm){taxObj().month=el.value;markDirty('settings');laterRender();return}
   if(el.dataset.ln){const l=(S.settings.loans||[]).find(x=>x.id===el.dataset.ln);if(l){const k=el.dataset.lf;
-    if(k==='name')l.name=el.value.trim()||l.name;else if(k==='freq')l.freq=+el.value;else if(k==='car')l.car=el.checked;
+    if(k==='name')l.name=el.value.trim()||l.name;else if(k==='freq')l.freq=+el.value;else if(k==='car')l.car=el.checked;else if(k==='afFri'||k==='end')l[k]=/^\d{4}-\d{2}$/.test(el.value)?el.value:'';
     else if(k==='cat'){if(el.value==='__lon'){l.viaLon=true;l.cat=''}else{l.viaLon=false;l.cat=el.value}}
     else{const v=el.value.trim()===''?null:parseAmt(el.value);l[k]=v==null||isNaN(v)?(k==='bal'||k==='rate'?null:0):Math.abs(v)}
     markDirty('settings');laterRender()}return}
