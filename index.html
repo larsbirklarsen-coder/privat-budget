@@ -633,13 +633,30 @@ function renderAll(keepScroll){
   _domAcc=null;
   if(S.loaded&&!S.demo&&!S._repaired){S._repaired=1;if(repairOutside())toast('Overførsler til lån og klassekasser tæller nu som udgifter')}
   const y=window.scrollY;
+  const fk=focusKey(document.activeElement);
   renderBanner();renderHeader();
   const v={oversigt:vOversigt,likviditet:vLikviditet,budget:vBudget,fordeling:vFordeling,laan:vLaan,skat:vSkat,trans:vTrans,regler:vRegler,import:vImport}[S.ui.tab]||vOversigt;
   $('#main').innerHTML=v();
   if(S.ui.tab==='budget')bindBudget();
   if(S.ui.tab==='import')bindImport();
   if(keepScroll)window.scrollTo(0,y);
+  if(fk)restoreFocus(fk);
 }
+/* fokus overlever, at siden tegnes forfra (så Tab hopper videre til næste felt) */
+function focusKey(el){
+  if(!el||el===document.body||!el.closest||!el.closest('#main'))return null;
+  if(el.id)return {sel:'#'+CSS.escape(el.id)};
+  const at=[...el.attributes].filter(a=>a.name.indexOf('data-')===0||(a.name==='value'&&el.type==='checkbox'));
+  if(!at.length)return null;
+  return {sel:el.tagName.toLowerCase()+at.map(a=>'['+a.name+'="'+CSS.escape(a.value)+'"]').join('')};
+}
+function restoreFocus(k){
+  let el=null;try{el=document.querySelector(k.sel)}catch(e){}
+  if(!el)return;
+  try{el.focus({preventScroll:true});if(el.tagName==='INPUT'&&el.type!=='checkbox'&&el.select)el.select()}catch(e){}
+}
+let _lr;function laterRender(){clearTimeout(_lr);_lr=setTimeout(()=>renderAll(true),0)}
+
 function monthPick(){return '<div class="monthpick"><button type="button" data-act="mprev" aria-label="Forrige måned">‹</button><span>'+mLabel(S.ui.month,true)+'</span><button type="button" data-act="mnext" aria-label="Næste måned">›</button></div>'}
 
 /* ---------- Oversigt ---------- */
@@ -1665,45 +1682,45 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;
-  if(el.dataset.te){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);const ex=p&&(p.extras||[]).find(x=>x.id===el.dataset.te);if(ex){const k=el.dataset.tef;if(k==='name')ex.name=el.value.trim()||ex.name;else if(k==='m')ex.m=+el.value;else if(k==='pens')ex.pens=el.checked;else{const v=parseAmt(el.value);ex.amt=isNaN(v)?0:Math.abs(v)}markDirty('settings');renderAll(true)}return}
-  if(el.dataset.tfm){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const st=new Set((p.fvMonths||[]).map(Number));const m=+el.dataset.tfm;if(el.checked)st.add(m);else st.delete(m);p.fvMonths=[...st].sort((a,b)=>a-b);markDirty('settings');renderAll(true)}return}
-  if(el.dataset.tp){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const k=el.dataset.tk;if(k==='name')p.name=el.value.trim()||p.name;else if(k==='cat'||k==='fvLoan')p[k]=el.value;else{const v=el.value.trim()===''?null:parseAmt(el.value);p[k]=v==null||isNaN(v)?null:Math.abs(v)}markDirty('settings');renderAll(true)}return}
-  if(el.dataset.tm){taxObj().month=el.value;markDirty('settings');renderAll(true);return}
+  if(el.dataset.te){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);const ex=p&&(p.extras||[]).find(x=>x.id===el.dataset.te);if(ex){const k=el.dataset.tef;if(k==='name')ex.name=el.value.trim()||ex.name;else if(k==='m')ex.m=+el.value;else if(k==='pens')ex.pens=el.checked;else{const v=parseAmt(el.value);ex.amt=isNaN(v)?0:Math.abs(v)}markDirty('settings');laterRender()}return}
+  if(el.dataset.tfm){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const st=new Set((p.fvMonths||[]).map(Number));const m=+el.dataset.tfm;if(el.checked)st.add(m);else st.delete(m);p.fvMonths=[...st].sort((a,b)=>a-b);markDirty('settings');laterRender()}return}
+  if(el.dataset.tp){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const k=el.dataset.tk;if(k==='name')p.name=el.value.trim()||p.name;else if(k==='cat'||k==='fvLoan')p[k]=el.value;else{const v=el.value.trim()===''?null:parseAmt(el.value);p[k]=v==null||isNaN(v)?null:Math.abs(v)}markDirty('settings');laterRender()}return}
+  if(el.dataset.tm){taxObj().month=el.value;markDirty('settings');laterRender();return}
   if(el.dataset.ln){const l=(S.settings.loans||[]).find(x=>x.id===el.dataset.ln);if(l){const k=el.dataset.lf;
     if(k==='name')l.name=el.value.trim()||l.name;else if(k==='freq')l.freq=+el.value;else if(k==='car')l.car=el.checked;
     else if(k==='cat'){if(el.value==='__lon'){l.viaLon=true;l.cat=''}else{l.viaLon=false;l.cat=el.value}}
     else{const v=el.value.trim()===''?null:parseAmt(el.value);l[k]=v==null||isNaN(v)?(k==='bal'||k==='rate'?null:0):Math.abs(v)}
-    markDirty('settings');renderAll(true)}return}
+    markDirty('settings');laterRender()}return}
   if(el.dataset.po){const po=payoffObj();const k=el.dataset.po;
     if(k==='month'||k==='incCat'||k==='fbPerson')po[k]=el.value;else if(k==='carNew')po.carNew=el.checked;else if(k==='stop'){const st=new Set(po.stopCats||[]);if(el.checked)st.add(el.value);else st.delete(el.value);po.stopCats=[...st]}
     else{const v=el.value.trim()===''?null:parseAmt(el.value);po[k]=v==null||isNaN(v)?(k==='saleCost'?0:null):Math.abs(v)}
-    markDirty('settings');renderAll(true);return}
-  if(el.dataset.tx){const t=txById(el.dataset.tx);if(t){t.c=el.value||null;t.auto=false;markMonth(el.dataset.k);renderHeader();el.style.borderColor=t.c?'':'var(--warn)';if(S.ui.tab==='oversigt'){renderAll(true);if(t.c)toast('Flyttet til '+catById(t.c).name)}}}
+    markDirty('settings');laterRender();return}
+  if(el.dataset.tx){const t=txById(el.dataset.tx);if(t){t.c=el.value||null;t.auto=false;markMonth(el.dataset.k);renderHeader();el.style.borderColor=t.c?'':'var(--warn)';if(S.ui.tab==='oversigt'){laterRender();if(t.c)toast('Flyttet til '+catById(t.c).name)}}}
   else if(el.dataset.rule!==undefined&&el.dataset.rule){const r=S.settings.rules.find(x=>x.k===el.dataset.rule);if(r){r.c=el.value;markDirty('settings')}}
   else if(el.dataset.gname){const g=S.settings.groups.find(x=>x.id===el.dataset.gname);if(g&&el.value.trim()){g.name=el.value.trim();markDirty('settings')}}
-  else if(el.dataset.catgroup){const c=catById(el.dataset.catgroup);if(c){c.g=el.value;markDirty('settings');renderAll(true);toast(c.name+' er flyttet til '+G(c.g).name)}}
+  else if(el.dataset.catgroup){const c=catById(el.dataset.catgroup);if(c){c.g=el.value;markDirty('settings');laterRender();toast(c.name+' er flyttet til '+G(c.g).name)}}
   else if(el.dataset.catname){const c=catById(el.dataset.catname);if(c&&el.value.trim()){c.name=el.value.trim();markDirty('settings');renderHeader()}}
   else if(el.dataset.accname){const a=S.settings.accounts.find(x=>x.no===el.dataset.accname);if(a){a.name=el.value.trim()||a.name;markDirty('settings')}}
-  else if(el.dataset.accliq){const a=S.settings.accounts.find(x=>x.no===el.dataset.accliq);if(a){a.liq=el.checked;markDirty('settings');renderAll(true)}}
-  else if(el.dataset.acctype){const a=S.settings.accounts.find(x=>x.no===el.dataset.acctype);if(a){a.type=el.value;if(el.value==='lan'||el.value==='udenfor')a.liq=false;S._repaired=0;markDirty('settings');renderAll(true)}}
+  else if(el.dataset.accliq){const a=S.settings.accounts.find(x=>x.no===el.dataset.accliq);if(a){a.liq=el.checked;markDirty('settings');laterRender()}}
+  else if(el.dataset.acctype){const a=S.settings.accounts.find(x=>x.no===el.dataset.acctype);if(a){a.type=el.value;if(el.value==='lan'||el.value==='udenfor')a.liq=false;S._repaired=0;markDirty('settings');laterRender()}}
   else if(el.dataset.inc||el.dataset.incall){const c=catById(el.dataset.inc||el.dataset.incall);if(c){const b=editBud(c);
       if(b.f!=='m'){b.m=Array.from({length:12},(_,i)=>budgetFor(c,i+1));b.f='m'}
       const v=parseAmt(el.value);const val=isNaN(v)?0:Math.abs(v);
       if(el.dataset.incall){if(el.value.trim()!=='')b.m=Array(12).fill(val)}else b.m[+el.dataset.i]=val;
-      markDirty('settings');renderAll(true)}}
+      markDirty('settings');laterRender()}}
   else if(el.dataset.xall||el.dataset.xm){const p=S.settings.plan=S.settings.plan||{};const k=el.dataset.xall||el.dataset.xm;const arr=p[k]=Array.isArray(p[k])?p[k]:Array(12).fill(null);
     const v=el.value.trim()===''?null:parseAmt(el.value);const val=v==null||isNaN(v)?null:Math.abs(v);
-    if(el.dataset.xall){for(let i=0;i<12;i++)arr[i]=val}else arr[+el.dataset.i]=val;markDirty('settings');renderAll(true)}
-  else if(el.dataset.pf){const p=S.settings.plan=S.settings.plan||{};const v=el.value.trim()===''?null:parseAmt(el.value);p[el.dataset.pf]=v==null||isNaN(v)?(el.dataset.pf==='buffer'?0:null):v;markDirty('settings');renderAll(true)}
+    if(el.dataset.xall){for(let i=0;i<12;i++)arr[i]=val}else arr[+el.dataset.i]=val;markDirty('settings');laterRender()}
+  else if(el.dataset.pf){const p=S.settings.plan=S.settings.plan||{};const v=el.value.trim()===''?null:parseAmt(el.value);p[el.dataset.pf]=v==null||isNaN(v)?(el.dataset.pf==='buffer'?0:null):v;markDirty('settings');laterRender()}
   else if(el.dataset.gf){const g=(S.settings.goals||[]).find(x=>x.id===el.dataset.g);if(g){const f=el.dataset.gf;
     if(f==='name')g.name=el.value.trim()||g.name;else if(f==='cat')g.cat=el.value;
     else if(f==='use'){g.use=g.use||Array(12).fill(0);const v=parseAmt(el.value);g.use[+el.dataset.i]=isNaN(v)?0:Math.abs(v)}
     else{const v=el.value.trim()===''?null:parseAmt(el.value);g[f]=v==null||isNaN(v)?(f==='start'?0:null):v}
-    markDirty('settings');renderAll(true)}}
-  else if(el.dataset.role&&el.closest('#main')&&S.ui.tab==='fordeling'){S.settings.roles=S.settings.roles||{};S.settings.roles[el.dataset.role]=el.value;markDirty('settings');renderAll(true);toast(ROLE(el.dataset.role)[1]+' er koblet til '+(el.value?accName(el.value):'ingen konto'))}
-  else if(el.id==='tfAcc'){S.ui.tfAcc=el.value;renderAll(true)}
-  else if(el.id==='tfMonth'){S.ui.tfMonth=el.value;renderAll(true)}
-  else if(el.id==='tfCat'){S.ui.tfCat=el.value;renderAll(true)}
+    markDirty('settings');laterRender()}}
+  else if(el.dataset.role&&el.closest('#main')&&S.ui.tab==='fordeling'){S.settings.roles=S.settings.roles||{};S.settings.roles[el.dataset.role]=el.value;markDirty('settings');laterRender();toast(ROLE(el.dataset.role)[1]+' er koblet til '+(el.value?accName(el.value):'ingen konto'))}
+  else if(el.id==='tfAcc'){S.ui.tfAcc=el.value;laterRender()}
+  else if(el.id==='tfMonth'){S.ui.tfMonth=el.value;laterRender()}
+  else if(el.id==='tfCat'){S.ui.tfCat=el.value;laterRender()}
 });
 let qT;document.addEventListener('input',e=>{if(e.target.id==='tfQ'){clearTimeout(qT);const v=e.target.value;qT=setTimeout(()=>{S.ui.tfQ=v;renderAll(true);const i=$('#tfQ');if(i){i.focus();i.setSelectionRange(v.length,v.length)}},250)}});
 document.addEventListener('submit',e=>{if(e.target.id==='loginForm'){e.preventDefault();doLogin();return}if(e.target.id==='ruleForm'){e.preventDefault();const k=normFull($('#rk').value);const c=$('#rc').value;if(!k)return;const ex=S.settings.rules.find(r=>r.k===k);if(ex)ex.c=c;else S.settings.rules.push({k,c});markDirty('settings');renderAll(true);toast('Regel for “'+k+'” gemt')}});
