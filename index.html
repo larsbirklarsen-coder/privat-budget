@@ -1,0 +1,1442 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><title>Privat budget</title><meta name="theme-color" content="#0d6a72"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Budget"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><link rel="icon" href="icon.svg"></head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: sticky header with tabs over a single working column; categorizing happens in a centered pop-up card. */
+:root{
+  --bg:#f2f5f5; --surface:#ffffff; --surface-2:#e8eeee; --ink:#14201f; --muted:#5a6a6a; --line:#d3dddd;
+  --accent:#0d6a72; --accent-ink:#ffffff; --accent-soft:#d5ebec;
+  --neg:#b0281f; --neg-soft:#f6dedb; --pos:#1c7744; --pos-soft:#dbeee2; --warn:#9c5c06; --warn-soft:#f5e8d0;
+  --shadow:0 18px 50px rgba(10,40,42,.18);
+  --f-ui:"Schibsted Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1415; --surface:#162021; --surface-2:#1d2a2b; --ink:#e3ebeb; --muted:#93a3a3; --line:#2a3839;
+  --accent:#53b5be; --accent-ink:#06191b; --accent-soft:#16363a;
+  --neg:#ff8b80; --neg-soft:#3b1d1b; --pos:#72d49c; --pos-soft:#15301f; --warn:#f0b65c; --warn-soft:#34280f;
+  --shadow:0 18px 50px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1415; --surface:#162021; --surface-2:#1d2a2b; --ink:#e3ebeb; --muted:#93a3a3; --line:#2a3839;
+  --accent:#53b5be; --accent-ink:#06191b; --accent-soft:#16363a;
+  --neg:#ff8b80; --neg-soft:#3b1d1b; --pos:#72d49c; --pos-soft:#15301f; --warn:#f0b65c; --warn-soft:#34280f;
+  --shadow:0 18px 50px rgba(0,0,0,.5); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1880px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.topin{display:flex;align-items:center;gap:14px;padding-block:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand b{font-size:21px;font-weight:700;letter-spacing:-.02em}
+.brand b span{color:var(--accent)}
+.status{font-size:12.5px;color:var(--muted)}
+.status.err{color:var(--neg)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);background:var(--surface-2)}
+.btn.danger{color:var(--neg);border-color:var(--neg-soft)}
+.btn[disabled]{opacity:.45;cursor:default}
+.count{background:var(--accent-ink);color:var(--accent);border-radius:99px;padding:0 8px;font-size:12.5px;font-weight:700;min-width:22px;text-align:center}
+.btn.primary.zero{background:var(--surface-2);border-color:var(--line);color:var(--muted)}
+.btn.primary.zero .count{background:var(--surface);color:var(--muted)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{border:0;background:none;padding:10px 12px 11px;color:var(--muted);font-weight:500;border-bottom:2.5px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs button:hover{color:var(--ink)}
+
+#banner:empty{display:none}
+.banner{background:var(--warn-soft);color:var(--ink);border-bottom:1px solid var(--line)}
+.banner .wrap{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-block:10px}
+.banner p{margin:0;flex:1 1 320px}
+main{padding-block:22px 60px;display:flex;flex-direction:column;gap:22px}
+h1{font-size:26px;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h2{font-size:17px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:4px 0 0;max-width:68ch}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.spread{justify-content:space-between}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.label{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+
+.monthpick{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.monthpick button{border:0;background:none;padding:7px 11px;color:var(--muted)}
+.monthpick button:hover{color:var(--ink)}
+.monthpick span{min-width:120px;text-align:center;font-weight:600}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:7px 12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);font-weight:600}
+
+.acctabs{align-self:flex-start;flex-wrap:wrap;max-width:100%}
+.acctabs button{padding:8px 14px}
+table.xfer td.m{font-family:var(--f-num);font-size:12.5px;text-align:right}
+table.xfer td,table.xfer th{padding:4px 6px}
+table.xfer td:first-child{min-width:150px;white-space:nowrap}
+table.xfer input.amt{border:1px solid transparent;background:var(--surface-2);border-radius:4px;padding:3px 6px;width:76px;min-width:0!important;max-width:76px!important;text-align:right;font-family:var(--f-num);font-size:12.5px;color:var(--ink)}
+table.xfer input.amt:hover{border-color:var(--line)}
+table.xfer input.amt:focus{border-color:var(--accent);background:var(--surface);outline:none}
+table.xfer .pm{display:flex;gap:6px;align-items:center;margin-top:3px}
+table.xfer .pm span{font-size:12px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.kpi .v{font-family:var(--f-num);font-size:22px;font-weight:500;letter-spacing:-.02em}
+.kpi .s{font-size:13px;color:var(--muted)}
+
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--surface-2);position:sticky;top:0}
+td.r,th.r{text-align:right}
+tr.grp td{background:var(--surface-2);font-weight:700;font-size:13px;letter-spacing:.02em}
+tr.tot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
+tbody tr:last-child td{border-bottom:0}
+.neg{color:var(--neg)} .pos{color:var(--pos)} .muted{color:var(--muted)}
+.bar{height:8px;border-radius:4px;background:var(--surface-2);position:relative;min-width:90px;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px}
+.bar i.warn{background:var(--warn)} .bar i.over{background:var(--neg)}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--pos-soft);color:var(--pos)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--neg-soft);color:var(--neg)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+
+/* Excel-like budget grid */
+.grid input,.grid select,.cell-in{border:1px solid transparent;background:transparent;border-radius:4px;padding:4px 6px;width:100%}
+.grid input:hover,.grid select:hover{border-color:var(--line)}
+.grid input:focus,.grid select:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.grid td{padding:3px 6px}
+.grid td.m{font-family:var(--f-num);font-size:12.5px;text-align:right;color:var(--muted);min-width:62px}
+.grid td.m.has{color:var(--ink)}
+.grid input.amt{text-align:right;font-family:var(--f-num);min-width:90px}
+.grid .name{min-width:210px}
+.grid select{min-width:118px}
+.grid select[data-f="s"]{min-width:104px}
+.yearbar{gap:10px}
+.yearbar .seg button{padding:7px 14px}
+.grid tr.grp td{padding:8px 10px}
+.x{border:0;background:none;color:var(--muted);padding:4px 8px;border-radius:4px}
+.x:hover{color:var(--neg);background:var(--neg-soft)}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field input,.field select,.inp{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;min-width:0}
+.field input:focus,.inp:focus{border-color:var(--accent);outline:none}
+
+/* chart */
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
+
+.drop{border:2px dashed var(--line);border-radius:12px;padding:34px 18px;text-align:center;background:var(--surface);display:flex;flex-direction:column;gap:10px;align-items:center}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.callout{border-radius:10px;padding:12px 16px;display:flex;gap:10px;align-items:flex-start}
+.callout.bad{background:var(--neg-soft)} .callout.warn{background:var(--warn-soft)} .callout.ok{background:var(--pos-soft)}
+.callout p{margin:0}
+.empty{text-align:center;color:var(--muted);padding:40px 16px}
+.linkbtn{border:0;background:none;padding:2px 4px 2px 0;font:inherit;color:inherit;text-align:left;display:inline-flex;gap:6px;align-items:baseline}
+.linkbtn:hover{color:var(--accent)}.linkbtn .caret{width:12px;color:var(--muted);font-size:12px}
+tr.ovopen td{background:var(--accent-soft)}
+tr.ovdetail td{padding:0;background:var(--surface-2)}
+.ovlist{display:flex;flex-direction:column;padding:6px 12px 10px 30px}
+.ovrow{display:grid;grid-template-columns:88px minmax(90px,140px) minmax(0,1fr) 110px minmax(160px,240px) 32px;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.ovrow:last-child{border-bottom:0}.ovtext{min-width:0;overflow-wrap:anywhere}.ovacc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:760px){.ovrow{grid-template-columns:1fr auto}.ovrow .ovacc{display:none}.ovrow select{grid-column:1/-1}}
+.rulegrp{display:flex;flex-direction:column;gap:2px;padding-block:14px}
+.rulegrp h2{margin-bottom:6px}
+.rulerow{display:grid;grid-template-columns:minmax(200px,300px) 1fr auto;gap:10px;align-items:start;padding:6px 0;border-top:1px solid var(--line)}
+.rconfirm{grid-column:1/-1}.rconfirm:empty{display:none}
+.rleft{display:flex;flex-direction:column}.rmeta{font-size:12px;padding-left:9px}
+.gname{font-size:17px;font-weight:700;border-color:transparent;background:transparent;padding:4px 8px;min-width:0;flex:1 1 200px;max-width:420px}
+.gname:hover{border-color:var(--line)}.gname:focus{border-color:var(--accent);background:var(--surface)}
+.rulerow .rname{font-weight:600;padding:5px 8px;border-color:transparent;background:transparent}
+.rulerow .rname:hover{border-color:var(--line)}
+.rulerow .rname:focus{border-color:var(--accent);background:var(--surface)}
+.rchip{display:inline-flex;align-items:center;gap:2px;background:var(--surface-2);border-radius:99px;padding:2px 2px 2px 10px;font-size:12.5px}
+.rchip .x{padding:2px 7px;border-radius:99px}
+.addrule{padding:4px 10px;font-size:13px;width:150px;border-radius:99px;border-style:dashed;text-transform:uppercase}
+.addrule::placeholder{text-transform:none}
+@media (max-width:760px){.rulerow{grid-template-columns:1fr}}
+
+/* Pop-up card */
+#modal{position:fixed;inset:0;z-index:20;background:rgba(8,20,22,.55);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.dialog{width:min(640px,100%);display:flex;flex-direction:column;gap:12px;margin-top:3vh}
+.dhead{display:flex;justify-content:space-between;align-items:center;color:#fff;gap:10px}
+.dhead .progress{font-size:14px;opacity:.9}
+.dhead .btn{background:rgba(255,255,255,.12);border-color:transparent;color:#fff}
+.stack{position:relative}
+.stack::before,.stack::after{content:"";position:absolute;left:14px;right:14px;bottom:-7px;height:20px;border-radius:14px;background:var(--surface);opacity:.55}
+.stack::after{left:28px;right:28px;bottom:-13px;opacity:.3}
+.stack.single::before,.stack.single::after{display:none}
+.card{position:relative;z-index:1;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:22px;display:flex;flex-direction:column;gap:16px}
+.card.out{animation:out .22s ease-in forwards}
+.card.in{animation:in .22s ease-out}
+@keyframes out{to{transform:translateX(60px) rotate(2deg);opacity:0}}
+@keyframes in{from{transform:translateY(10px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.card.out,.card.in{animation:none}}
+.ctop{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.merchant{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.15;word-break:break-word}
+.raw{font-family:var(--f-num);font-size:12.5px;color:var(--muted);word-break:break-all;margin-top:4px}
+.amount{font-family:var(--f-num);font-size:26px;font-weight:500;letter-spacing:-.03em;text-align:right}
+.learn{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface-2);border-radius:10px;padding:9px 12px;font-size:14px}
+.learn input[type=text]{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px;font-family:var(--f-num);font-size:13px;width:180px;min-width:0;text-transform:uppercase}
+.search{border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:16px;background:var(--surface);width:100%}
+.search:focus{border-color:var(--accent);outline:none}
+.picker{display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow-y:auto;padding-right:4px}
+.pg{display:flex;flex-direction:column;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 13px;font-size:14px}
+.chip:hover,.chip.first{border-color:var(--accent);background:var(--accent-soft)}
+.chip.first{font-weight:600}
+.cfoot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.done{text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;padding:20px}
+.done .big{font-size:44px;line-height:1;color:var(--pos)}
+#toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:30;max-width:calc(100% - 32px);font-size:14px;box-shadow:var(--shadow)}
+.kbd{font-family:var(--f-num);font-size:11.5px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted)}
+@media (max-width:560px){.merchant,.amount{font-size:21px}.ctop{flex-direction:column}.amount{text-align:left}.kpi .v{font-size:19px}}
+
+/* ---------- Telefon ---------- */
+.mobonly{display:none}
+.banner a,.sub a{color:var(--accent);font-weight:600}
+/* Budget-gitteret: postens navn bliver stående, mens man scroller sidelæns gennem månederne */
+.grid tr:not(.grp):not(.tot) td:first-child{position:sticky;left:0;z-index:1;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+.grid th:first-child{left:0;z-index:2}
+@media (max-width:760px){
+  .mobonly{display:flex}
+  .topin{padding-block:8px;gap:10px}
+  .brand b{font-size:19px}
+  nav.tabs button{padding:9px 10px 10px}
+  main{padding-block:14px 80px;gap:16px}
+  h1{font-size:21px}
+  .sub{font-size:14px}
+  .panel{padding:14px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .kpi{padding:10px 12px}
+  .kpi .v{font-size:18px}
+  .grid .name{min-width:130px;max-width:150px}
+  .grid select{min-width:96px}
+  .btn{padding:9px 13px}
+  .monthpick span{min-width:104px}
+  .row{gap:8px}
+}
+.nologin #katBtn,.nologin #tabs{display:none!important}
+.login{max-width:380px;margin:8vh auto 0;display:flex;flex-direction:column;gap:14px}
+.login .inp{font-size:16px;padding:12px}
+@media (max-width:760px) and (pointer:coarse){input,select,textarea,.inp{font-size:16px!important}}
+/* Oversigt som kort */
+@media (max-width:640px){
+  table.ovt thead{display:none}
+  table.ovt,table.ovt tbody{display:block}
+  table.ovt tbody tr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  table.ovt td{border:0;padding:0;background:transparent}
+  table.ovt td:nth-child(1){grid-row:1;grid-column:1/3;min-width:0}
+  table.ovt td:nth-child(6){grid-row:1;grid-column:3;text-align:right;min-width:0}
+  table.ovt td:nth-child(6) .pill{white-space:normal;text-align:center}
+  table.ovt td:nth-child(5){grid-row:2;grid-column:1/-1}
+  table.ovt td:nth-child(2){grid-row:3;grid-column:1;text-align:left}
+  table.ovt td:nth-child(3){grid-row:3;grid-column:2;text-align:left}
+  table.ovt td:nth-child(4){grid-row:3;grid-column:3;text-align:right}
+  table.ovt td[data-l]::before{content:attr(data-l);display:block;font-family:var(--f-ui);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  table.ovt td:empty{display:none}
+  table.ovt tr.grp{background:var(--surface-2)}
+  table.ovt tr.grp td:nth-child(1){grid-column:1/-1}
+  table.ovt tr.grp td:nth-child(2),table.ovt tr.grp td:nth-child(3),table.ovt tr.grp td:nth-child(4){grid-row:2}
+  table.ovt tr.ovopen{background:var(--accent-soft)}
+  table.ovt tr.ovdetail{display:block;padding:0;background:var(--surface-2)}
+  table.ovt tr.ovdetail td{display:block}
+  .ovlist{padding:6px 12px 10px}
+  .linkbtn{white-space:normal}
+  /* Transaktioner som kort */
+  table.txt thead{display:none}
+  table.txt,table.txt tbody{display:block}
+  table.txt tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+  table.txt td{border:0;padding:0;min-width:0!important}
+  table.txt td.td-d{grid-row:1;grid-column:1;color:var(--muted)}
+  table.txt td.td-acc{grid-row:1;grid-column:1;padding-left:96px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+  table.txt td.td-a{grid-row:1;grid-column:2;font-weight:600}
+  table.txt td.td-t{grid-row:2;grid-column:1/-1;overflow-wrap:anywhere}
+  table.txt td.td-c{grid-row:3;grid-column:1/-1}
+  table.txt td.td-c select{width:100%}
+}
+</style>
+
+<header class="top">
+  <div class="wrap topin">
+    <div class="brand"><b>Bud<span>get</span></b><span class="status" id="status">Starter…</span></div>
+    <button class="btn primary" id="katBtn" type="button">Kategorisér <span class="count" id="katCount">0</span></button>
+  </div>
+  <nav class="tabs wrap" id="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="oversigt">Oversigt</button>
+    <button type="button" role="tab" data-tab="likviditet">Likviditet</button>
+    <button type="button" role="tab" data-tab="budget">Budget</button>
+    <button type="button" role="tab" data-tab="fordeling">Fordeling</button>
+    <button type="button" role="tab" data-tab="trans">Transaktioner</button>
+    <button type="button" role="tab" data-tab="regler">Regler</button>
+    <button type="button" role="tab" data-tab="import">Import</button>
+  </nav>
+</header>
+<div id="banner"></div>
+<main class="wrap" id="main"><div class="empty">Henter dine data…</div></main>
+<div id="modal" hidden></div>
+<div id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+'use strict';
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+const nf0=new Intl.NumberFormat('da-DK',{maximumFractionDigits:0});
+const nf2=new Intl.NumberFormat('da-DK',{minimumFractionDigits:2,maximumFractionDigits:2});
+const kr=v=>nf0.format(Math.round(v||0))+' kr.';
+const kr2=v=>nf2.format(v||0);
+const MON=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+const MONL=['januar','februar','marts','april','maj','juni','juli','august','september','oktober','november','december'];
+const WD=['søn','man','tir','ons','tor','fre','lør'];
+const pad=n=>String(n).padStart(2,'0');
+const ymOf=d=>d.getFullYear()+'-'+pad(d.getMonth()+1);
+const TODAY=new Date();
+const CUR=ymOf(TODAY);
+function addM(key,n){let[y,m]=key.split('-').map(Number);m+=n;while(m>12){m-=12;y++}while(m<1){m+=12;y--}return y+'-'+pad(m)}
+function mLabel(key,long){const[y,m]=key.split('-').map(Number);return (long?MONL:MON)[m-1]+' '+y}
+function mNum(key){return +key.split('-')[1]}
+function dayLabel(iso){const d=new Date(iso+'T12:00:00');return WD[d.getDay()]+' '+d.getDate()+'. '+MON[d.getMonth()]+' '+d.getFullYear()}
+function hash(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3800)}
+
+/* ---------- model ---------- */
+const DEFAULT_GROUPS=[
+  {id:'ind',name:'Indtægter',type:'income'},
+  {id:'bolig',name:'Bolig',type:'expense'},
+  {id:'transport',name:'Transport',type:'expense'},
+  {id:'mad',name:'Mad',type:'expense'},
+  {id:'abon',name:'Abonnementer',type:'expense'},
+  {id:'pers',name:'Personligt',type:'expense'},
+  {id:'opsp',name:'Opsparing',type:'expense'},
+  {id:'andet',name:'Tæller ikke med',type:'ignore'}
+];
+const grp=()=>(S.settings&&S.settings.groups&&S.settings.groups.length)?S.settings.groups:DEFAULT_GROUPS;
+const G=id=>{const gs=grp();return gs.find(g=>g.id===id)||gs.find(g=>g.type==='ignore')||gs[gs.length-1]};
+const FREQ=[[1,'Hver måned'],[3,'Kvartalsvis'],[6,'Halvårligt'],[12,'Årligt'],['m','Pr. måned (manuelt)']];
+function defaultCats(demo){
+  const c=(id,name,g,amt,f,s)=>({id,name,g,b:{amt:demo?amt:0,f:f||1,s:s||1}});
+  return [
+    c('lon','Løn','ind',30000), c('indovr','Anden indtægt','ind',0),
+    c('bolig','Husleje / boliglån','bolig',9800), c('forsyning','El, vand og varme','bolig',1100), c('forsikring','Forsikringer','bolig',2400,3,1),
+    c('braendstof','Brændstof & opladning','transport',1200), c('bil','Bil – service og afgift','transport',3600,6,3), c('offentlig','Offentlig transport','transport',400),
+    c('dagligvarer','Dagligvarer','mad',5500), c('fastfood','Fast food & takeaway','mad',800), c('restaurant','Restaurant & café','mad',600),
+    c('streaming','Streaming','abon',380), c('mobil','Mobil','abon',150), c('internet','Internet','bolig',300),
+    c('toj','Tøj & sko','pers',700), c('fritid','Fritid & hobby','pers',800), c('hjem','Hjem & indretning','pers',500), c('gaver','Gaver','pers',4500,12,12), c('ferie','Ferie & rejser','pers',20000,12,6), c('diverse','Diverse','pers',500),
+    c('opsparing','Opsparing','opsp',2000),
+    c('overforsel','Overførsel mellem egne konti','andet',0)
+  ];
+}
+function defaultRules(){
+  const m={dagligvarer:['NETTO','REMA','FØTEX','FOETEX','BRFCOOP','LIDL','BILKA','COOP','KVICKLY','SUPERBRUGSEN','DAGLI\'BRUGSEN','MENY','SPAR','LØVBJERG','ABC LAVPRIS','IRMA'],
+    fastfood:['MCDONALD','BURGER KING','SUNSET','JUST EAT','WOLT','MAX BURGERS','KFC','DOMINOS','HUNGRY','7 ELEVEN'],
+    streaming:['NETFLIX','SPOTIFY','VIAPLAY','HBO','DISNEY','TV 2','APPLE COM BILL'],
+    mobil:['TELMORE','TELIA','TELENOR','CBB','OISTER','LEBARA','CALLME','CALL ME'],
+    internet:['YOUSEE','NORLYS FIBER','FASTSPEED','WAOO','FULLRATE','STOFA','HIPER'],
+    braendstof:['MONTA','CLEVER','CIRCLE K','Q8','SHELL','INGO','UNO X','F24','OK PLUS'],
+    offentlig:['DSB','REJSEKORT','MOVIA','MIDTTRAFIK','ARRIVA','METRO'],
+    toj:['ZALANDO','H&M','VERO MODA','JACK & JONES'],
+    hjem:['IKEA','JYSK','SILVAN','HARALD NYBORG'],
+    forsyning:['ØRSTED','ANDEL ENERGI','NORLYS','EWII','VANDSELSKAB','FORSYNING'],
+    bolig:['HUSLEJE','BOLIGFORENING','REALKREDIT'],
+    opsparing:['OPSPARING','NORDNET'],
+    indovr:['BØRNE OG UNGEYDELSE','OVERSKYDENDE SKAT','BOLIGRABAT'],
+    lon:['LØN','LØNOVERFØRSEL','MÅNEDSLØN']};
+  const r=[];for(const c in m)for(const k of m[c])r.push({k:normFull(k),c});return r;
+}
+function defaultSettings(demo){return {v:3,groups:DEFAULT_GROUPS.map(g=>({...g})),cats:defaultCats(demo),rules:defaultRules(),accounts:[],startBal:demo?4250:null,startDate:demo?CUR+'-'+pad(TODAY.getDate()):null,buffer:demo?10000:5000}}
+function migrate(st){
+  if(!st)return st;st.accounts=st.accounts||[];fixAccounts(st);if(!st.groups||!st.groups.length)st.groups=DEFAULT_GROUPS.map(g=>({...g}));
+  const seen=new Set();st.rules=(st.rules||[]).map(r=>{const o={k:normFull(r.k),c:r.c};if(r.k2)o.k2=normFull(r.k2);if(r.a!=null)o.a=+r.a;return o}).filter(r=>{const id=r.k+'|'+(r.k2||'')+'|'+(r.a==null?'':r.a);return r.k&&!seen.has(id)&&seen.add(id)});
+  const mb=st.cats.find(c=>c.id==='mobil'&&c.name==='Mobil & internet');
+  if(mb&&!st.cats.some(c=>c.id==='internet')){mb.name='Mobil';const g=st.groups.some(x=>x.id==='bolig')?'bolig':mb.g;st.cats.push({id:'internet',name:'Internet',g,b:{amt:0,f:1,s:1}});
+    const net=['YOUSEE','NORLYS FIBER','FASTSPEED','WAOO','FULLRATE','STOFA','HIPER'];
+    st.rules=st.rules.filter(r=>!(r.c==='mobil'&&net.includes(r.k)));net.forEach(k=>{if(!st.rules.some(r=>r.k===k))st.rules.push({k,c:'internet'})})}
+  const REN={};
+  for(const c of st.cats)if(REN[c.name])c.name=REN[c.name];
+  if(!st.years||!Object.keys(st.years).length){const y={};for(const c of st.cats)y[c.id]=clone(c.b||{amt:0,f:1,s:1});st.years={[String(TODAY.getFullYear())]:y}}
+  if(!st.bankAdded){st.bankAdded=1;if(!st.cats.some(c=>c.id==='bank')){const g=(st.groups.find(x=>x.id==='fam')||st.groups.find(x=>x.type==='expense')||{}).id;
+    if(g){st.cats.push({id:'bank',name:'Renter og bankgebyrer',g,b:{amt:0,f:1,s:1}});for(const y in (st.years||{}))st.years[y].bank={amt:0,f:1,s:1};
+      ['RENTE','GEBYR','OVERTRÆKSPROV','KORTGEBYR','PRODUKTPAKKE'].forEach(k=>{if(!st.rules.some(r=>r.k===k))st.rules.push({k,c:'bank'})})}}}
+  if(!st.plan)st.plan={buffer:6000,start:null,fixed:null};
+  if(!st.goals){const yy=st.years&&(st.years[String(TODAY.getFullYear())]||st.years[Object.keys(st.years)[0]])||{};
+    const mon=id=>{const c=st.cats.find(x=>x.id===id);const b=yy[id]||(c&&c.b)||{};const out=Array(12).fill(0);if(b.f==='m'){(b.m||[]).forEach((v,i)=>{if(i<12)out[i]=+v||0});return out}const amt=+b.amt||0,f=+b.f||1,s=+b.s||1;if(amt)for(let m=1;m<=12;m++)if(f===1||(((m-s)%f)+f)%f===0)out[m-1]=amt;return out};
+    const pick=(a,ms)=>a.map((v,i)=>ms.includes(i+1)?v:0);
+    if(st.cats.some(c=>c.id==='ferie')&&st.cats.some(c=>c.id==='gaver')){const fe=mon('ferie'),ga=mon('gaver');
+      st.goals=[{id:'g_sommer',name:'Sommerferie',cat:'ferie',start:0,pm:null,use:pick(fe,[6,7,8])},{id:'g_opl',name:'Oplevelser',cat:'ferie',start:0,pm:null,use:pick(fe,[1,2,3,4,5,9,10,11,12])},
+        {id:'g_fds',name:'Fødselsdage',cat:'gaver',start:0,pm:null,use:pick(ga,[1,2,3,4,5,6,7,8,9,10])},{id:'g_jul',name:'Jul',cat:'gaver',start:0,pm:null,use:pick(ga,[11,12])}]}
+    else st.goals=[]}
+  if(!st.cats.some(c=>c.id==='overforsel')){const ig=st.groups.find(g=>g.type==='ignore')||(st.groups.push({id:'andet',name:'Tæller ikke med',type:'ignore'}),st.groups[st.groups.length-1]);st.cats.push({id:'overforsel',name:'Overførsel mellem egne konti',g:ig.id,b:{amt:0,f:1,s:1}})}
+  return st;
+}
+/* accounts */
+/* Kendte Nykredit-konti (sidste 4 cifre) -> navn og type. Lån og klassekasser er uden for husholdningen. */
+const KNOWN={};
+const ATYPES=[['drift','Daglig drift'],['opsparing','Opsparing'],['lan','Lån'],['udenfor','Uden for husholdningen']];
+function guessType(name){name=String(name||'');if(/klassekasse/i.test(name))return 'udenfor';if(/l[åa]n/i.test(name))return 'lan';if(/ferie|opspar/i.test(name))return 'opsparing';return 'drift'}
+function typeOfAcc(st,no){const a=((st&&st.accounts)||[]).find(x=>x.no===no);if(a&&a.type)return a.type;const k=KNOWN[String(no||'').slice(-4)];if(k)return k[1];return a?guessType(a.name):'drift'}
+const accType=no=>typeOfAcc(S.settings,no);
+const outside=no=>{if(!no)return false;const t=accType(no);return t==='lan'||t==='udenfor'};
+const counts=t=>!(t.acc&&outside(t.acc));
+function fixAccounts(st){for(const a of (st.accounts||[])){const k=KNOWN[String(a.no).slice(-4)];if(k&&(!a.name||/^Konto …/.test(a.name)))a.name=k[0];if(!a.type){a.type=typeOfAcc(st,a.no);if(a.type==='lan'||a.type==='udenfor')a.liq=false}}}
+/* Overførsler til lån og klassekasser er udgifter, ikke interne overførsler: fjern markeringen fra den modsatte postering */
+function repairOutside(){let n=0;const all=allTx();const idx=new Map();for(const t of all){if(!t.x)continue;const k=Math.round(Math.abs(t.a)*100);(idx.get(k)||idx.set(k,[]).get(k)).push(t)}
+  for(const t of all){if(!t.x||!t.acc||!outside(t.acc))continue;
+    const p=(idx.get(Math.round(Math.abs(t.a)*100))||[]).find(o=>o!==t&&o.x&&o.acc&&!outside(o.acc)&&Math.sign(o.a)===-Math.sign(t.a)&&Math.abs(dayNo(o.d)-dayNo(t.d))<=3);
+    if(p){delete p.x;if(p.auto||p.c==='overforsel'){const r=findRule(p.t,p.t2,p.a);p.c=r?r.c:null;p.auto=!!r}markMonth(p.d.slice(0,7));n++}}
+  return n}
+let _domAcc=null;
+function domAccMap(){if(_domAcc)return _domAcc;const cnt={};for(const t of allTx()){if(!t.c||!t.acc)continue;const m=cnt[t.c]=cnt[t.c]||{};m[t.acc]=(m[t.acc]||0)+Math.abs(t.a)}const out={};for(const c in cnt)out[c]=Object.entries(cnt[c]).sort((a,b)=>b[1]-a[1])[0][0];_domAcc=out;return out}
+const accList=()=>S.settings.accounts||[];
+const ROLES=[['budget','Budget','Budgetkonto',/budget/i],['mad','Mad','Madkonto',/mad/i],['diverse','Diverse','Diversekonto',/divers/i],['lon','Lønkonto','Fælles Nemkonto',/l[øo]n|nem/i],['opspar','Opsparing','Opsparing',/opspar/i]];
+const ROLE=r=>ROLES.find(x=>x[0]===r)||ROLES[0];
+/* fordeling efter regnearket Budget 2026: Budgetkonto = alle faste udgifter; Madkonto (89) og Diverse (97) får en månedlig overførsel; eget forbrug, lommepenge og Nordnet går fra Fælles Nemkonto */
+const DIV_IDS=new Set(['hus_indretning','bil_park','born_toj','dyr_foder','toj','fam_pleje','fritid','fam_elektronik','fam_graense','diverse']);
+const LON_IDS=new Set(['fam_lars','fam_maria','born_lomme','opsp_nordnet','opsparing']);
+function defRole(c){if(c.g==='mad'||['dagligvarer','bager','fastfood','restaurant'].includes(c.id))return 'mad';if(DIV_IDS.has(c.id))return 'diverse';if(LON_IDS.has(c.id))return 'lon';if(goalsFor(c.id)||c.id==='ferie'||c.id==='gaver')return 'opspar';return 'budget'}
+const roleOf=c=>c.r||defRole(c);
+function roleAcc(r){const set=(S.settings.roles||{})[r];if(set&&accList().some(a=>a.no===set))return set;const rr=ROLE(r);const hit=accList().find(a=>rr[3].test(a.name));return hit?hit.no:''}
+function effAcc(c){return c.acc||roleAcc(roleOf(c))||domAccMap()[c.id]||''}
+function actualAcc(catId,keys,acc){let s=0;for(const k of keys)for(const t of (S.months[k]||[]))if(t.c===catId&&t.acc===acc)s+=t.a;return typeOf(catId)==='income'?s:-s}
+const accName=no=>{const a=(S.settings.accounts||[]).find(x=>x.no===no);return a?a.name:(no?'…'+no.slice(-4):'')};
+function accSaldo(no){let best=null;for(const t of allTx())if(t.acc===no&&typeof t.s==='number'&&(!best||t.d>best.d||(t.d===best.d&&(t.o||0)>(best.o||0))))best=t;return best}
+function startBalance(){
+  const accs=S.settings.accounts||[];
+  if(!accs.length)return {bal:+S.settings.startBal||0,known:S.settings.startBal!=null};
+  let bal=0,known=false,date='';for(const a of accs){if(!a.liq)continue;const s=accSaldo(a.no);if(s){bal+=s.s;known=true;if(s.d>date)date=s.d}}
+  return {bal,known,date};
+}
+/* internal transfers: explicit when both sender and receiver are own accounts, or the text names one of them;
+   the other leg is paired by opposite amount on another own account within 3 days */
+const dayNo=iso=>Date.UTC(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10))/864e5;
+function detectInternal(newTx,existing){
+  const own=new Set([...(S.settings.accounts||[]).map(a=>a.no),...newTx.map(t=>t.acc)].filter(n=>n&&!outside(n)));
+  const own10=new Map([...own].map(n=>[n.slice(-10),n]));
+  const explicit=t=>{
+    if(t.from&&t.to&&t.from!==t.to&&own.has(t.from)&&own.has(t.to))return true;
+    const m=String(t.t).match(/\d{10,14}/g);if(m)for(const n of m){const o=own10.get(n.slice(-10));if(o&&o!==t.acc)return true}
+    return false;
+  };
+  for(const t of newTx)if(explicit(t))t.x=1;
+  const idx=new Map();for(const t of existing.concat(newTx)){const k=Math.round(Math.abs(t.a)*100);(idx.get(k)||idx.set(k,[]).get(k)).push(t)}
+  const used=new Set();
+  for(const t of newTx){
+    if(t.x||!t.acc||!own.has(t.acc))continue;
+    const c=(idx.get(Math.round(Math.abs(t.a)*100))||[]).find(o=>o!==t&&o.x&&!used.has(o)&&o.acc!==t.acc&&Math.sign(o.a)===-Math.sign(t.a)&&Math.abs(dayNo(o.d)-dayNo(t.d))<=3);
+    if(c){t.x=1;used.add(c)}
+  }
+  return newTx.filter(t=>t.x).length;
+}
+function suggestAccNames(newTx){
+  const by={};for(const t of newTx){if(!t.x||!t.to||t.to===t.acc)continue;const m=String(t.t).match(/^Til\s+(.+)/i);if(m){const n=m[1].trim();(by[t.to]=by[t.to]||{})[n]=(by[t.to][n]||0)+1}}
+  const out={};for(const no in by)out[no]=Object.entries(by[no]).sort((a,b)=>b[1]-a[1])[0][0];return out;
+}
+
+/* text normalisation + rule matching */
+function normFull(t){return String(t||'').toUpperCase().replace(/(\d+)/g,' $1 ').replace(/[^A-Z0-9ÆØÅÄÖÜÉ&']+/g,' ').trim()}
+const STOP=new Set(['FORRETNING','DEBITCARD','NOTAC','WALLET','VISA','DANKORT','NOTA','KØB','KOB','MOBILEPAY','MC','MASTERCARD','BS','BETALING','BETALINGSSERVICE','OVERFØRSEL','OVERFORSEL','PAY','DKK','EUR','SEK','NOK','USD','GBP','KORT','NR','FRA','TIL','DK','KORTKØB','DEBITKORT','INDBETALING','AFREGNING','REF','ID','APS','A/S','AS','IVS']);
+function keyTokens(t){return normFull(t).replace(/\b(APPLE|GOOGLE) PAY\b/g,' ').split(' ').filter(w=>w.length>1&&!/\d/.test(w)&&!STOP.has(w))}
+function suggestKey(t){const k=keyTokens(t);if(!k.length)return normFull(t).split(' ').slice(0,2).join(' ');return (k[0].length<5&&k[1])?k[0]+' '+k[1]:k[0]}
+function merchantName(t){const k=keyTokens(t).slice(0,4);const s=k.length?k.join(' '):String(t||'').trim();return s.toLowerCase().replace(/(^|[\s&'-])\S/g,m=>m.toUpperCase())}
+function ruleHits(full,key){
+  if(!key)return false;const hay=' '+full+' ';let i=hay.indexOf(' '+key);
+  while(i>=0){const after=hay[i+1+key.length];if(after===' '||key.length>=5)return true;i=hay.indexOf(' '+key,i+1)}
+  return false;
+}
+const hay=t=>normFull(t.t+' '+(t.t2||''));
+const isCard=t=>/^Forretning/i.test(t.t)&&!!t.t2;
+const amtOk=(r,a)=>r.a==null||(a!=null&&Math.abs(Math.abs(a)-r.a)<0.5);
+function findRule(text,t2,a){const f=normFull(text+' '+(t2||'')),f2=t2?' '+normFull(t2).replace(/ /g,'')+' ':'';let best=null,bs=-1;
+  for(const r of S.settings.rules){if(!ruleHits(f,r.k)||!amtOk(r,a))continue;if(r.k2&&!f2.includes(r.k2.replace(/ /g,'')))continue;const sc=(r.a!=null?2000:0)+(r.k2?1000:0)+r.k.length;if(sc>bs){bs=sc;best=r}}return best}
+const fmtAmt=v=>nf2.format(v).replace(/,00$/,'');
+
+/* budget per month */
+/* Budgets per year: settings.years = {"2026":{catId:{amt,f,s,m}}}. A year without its own figures
+   uses the nearest earlier year (or the earliest year), so a projection into 2028 never shows zero. */
+function yearList(){const ys=Object.keys((S.settings&&S.settings.years)||{}).map(Number).sort((a,b)=>a-b);return ys.length?ys:[TODAY.getFullYear()]}
+function srcYear(y){const ys=yearList();let best=ys[0];for(const v of ys)if(v<=y)best=v;return best}
+function budObj(cat,y){const ys=S.settings.years||{};const sy=srcYear(y);const b=ys[sy]&&ys[sy][cat.id];return b||cat.b||{amt:0,f:1,s:1}}
+function goalsFor(id){const g=((S.settings&&S.settings.goals)||[]).filter(x=>x.cat===id);return g.length?g:null}
+const gPm=g=>{if(g.pm!=null&&g.pm!=='')return +g.pm||0;const u=(g.use||[]).map(v=>+v||0),st=+g.start||0;let need=(u.reduce((s,v)=>s+v,0)-st)/12,cum=0;for(let k=1;k<=12;k++){cum+=u[k-1]||0;need=Math.max(need,(cum-st)/k)}return Math.max(0,Math.ceil(need/100)*100)};
+function budgetFor(cat,m,y){const gl=goalsFor(cat.id);if(gl)return gl.reduce((s,g)=>s+(+(g.use||[])[m-1]||0),0);const b=budObj(cat,y==null?S.ui.budgetYear:y);if(b.f==='m')return +((b.m||[])[m-1])||0;const amt=+b.amt||0,f=+b.f||1,s=+b.s||1;if(!amt)return 0;if(f===1)return amt;return (((m-s)%f)+f)%f===0?amt:0}
+
+/* ---------- state ---------- */
+const S={settings:null,months:{},demo:false,loaded:false,ui:{tab:'oversigt',month:CUR,ytd:false,budgetYear:TODAY.getFullYear(),tfCat:'',tfQ:'',tfMonth:CUR,tfAcc:''}};
+const catById=id=>S.settings.cats.find(c=>c.id===id);
+const typeOf=id=>{const c=catById(id);return c?G(c.g).type:null};
+function allTx(){const out=[];for(const k in S.months)for(const t of S.months[k])out.push(t);return out}
+function inbox(){return allTx().filter(t=>counts(t)&&(!t.c||!catById(t.c))).sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0)}
+function actualIn(catId,keys){let s=0;for(const k of keys)for(const t of (S.months[k]||[]))if(t.c===catId&&counts(t))s+=t.a;return typeOf(catId)==='income'?s:-s}
+function monthKeysFor(){if(!S.ui.ytd)return [S.ui.month];const y=S.ui.month.slice(0,4);const out=[];for(let m=1;m<=mNum(S.ui.month);m++)out.push(y+'-'+pad(m));return out}
+
+/* ---------- demo data ---------- */
+function demoMonths(){
+  let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+  const months={};
+  for(let i=-2;i<=0;i++){
+    const key=addM(CUR,i);const[y,m]=key.split('-').map(Number);const last=new Date(y,m,0).getDate();
+    const maxDay=i===0?TODAY.getDate():last;const list=[];
+    const add=(day,t,a,c)=>{if(day<=maxDay)list.push({d:key+'-'+pad(day),t,a:Math.round(a*100)/100,c:c||null})};
+    add(1,'BS BETALING HUSLEJE BOLIGFORENINGEN',-9800,'bolig');
+    add(3,'BS BETALING ØRSTED SALG & SERVICE',-(560+Math.round(rnd()*180)),'forsyning');
+    add(5,'VISA/DANKORT KØB NETFLIX.COM 4521',-129,'streaming');
+    add(6,'VISA/DANKORT KØB SPOTIFY P1F3A',-119,'streaming');
+    add(8,'BS BETALING TELMORE A/S',-149,'mobil');
+    const shops=['NETTO 4417 AARHUS C','REMA 1000 RISSKOV','FØTEX VESTERGADE','LIDL 2213 AARHUS N'];
+    [2,6,9,13,16,20,23,27].forEach((d,j)=>add(d,'VISA/DANKORT KØB '+shops[(j+i+3)%4],-(240+Math.round(rnd()*520)+rnd()),'dagligvarer'));
+    add(11,'VISA/DANKORT KØB MCDONALDS 0821 AARHUS',-(89+Math.round(rnd()*60)),'fastfood');
+    add(24,'VISA/DANKORT KØB MCDONALDS 1140 SKANDERBORG',-(79+Math.round(rnd()*50)),'fastfood');
+    add(18,'VISA/DANKORT KØB WOLT.COM',-(185+Math.round(rnd()*90)),'fastfood');
+    add(10,'VISA/DANKORT KØB CIRCLE K 3318',-(480+Math.round(rnd()*160)),'braendstof');
+    add(25,'VISA/DANKORT KØB CIRCLE K 3318',-(450+Math.round(rnd()*160)),'braendstof');
+    add(14,'VISA/DANKORT KØB DSB BILLETAUTOMAT',-178,'offentlig');
+    add(15,'OVERFØRSEL TIL OPSPARING',-2000,'opsparing');
+    add(Math.min(last,28),'LØN '+MONL[m-1].toUpperCase()+' ARBEJDSGIVER',30000,'lon');
+    if(i===-1){add(12,'VISA/DANKORT KØB ZALANDO SE',-649,'toj');add(21,'VISA/DANKORT KØB CAFE GUSTO',-312,'restaurant')}
+    if(i===0){
+      add(4,'VISA/DANKORT KØB SØSTRENE GRENE 0412',-189);
+      add(7,'MOBILEPAY: ANNE HANSEN',-250);
+      add(12,'VISA/DANKORT KØB MATAS 233',-312);
+      add(17,'BS BETALING TRYG FORSIKRING',-2400);
+      add(19,'VISA/DANKORT KØB ELGIGANTEN AARHUS',-1499);
+      add(22,'MOBILEPAY: PETER JENSEN',150);
+      add(26,'VISA/DANKORT KØB MCDONALDS 0821 AARHUS',-112,'fastfood');
+    }
+    const seen={};list.forEach(t=>{const b=t.d+'|'+t.a+'|'+t.t;seen[b]=(seen[b]||0)+1;t.id=hash(b+'#'+seen[b])});
+    list.sort((a,b)=>a.d<b.d?-1:1);months[key]=list;
+  }
+  return months;
+}
+const SEED=null;
+function loadSeed(){S.demo=false;S.settings=migrate(defaultSettings(false));S.months={};markDirty('settings')}
+function loadDemo(){S.demo=true;S.settings=defaultSettings(true);S.months=demoMonths()}
+function startOwn(){S.demo=false;S.settings=defaultSettings(false);S.months={};markDirty('settings');renderAll()}
+
+/* ---------- storage ---------- */
+/* ---------- storage: Supabase (egen database, hver bruger kan kun læse sine egne rækker) ---------- */
+const SB_URL='__SB_URL__';
+const SB_KEY='__SB_KEY__';
+const Store={mode:'memory',sb:null,uid:null,email:'',dirty:new Set(),timers:{},running:{},again:{}};
+function setStatus(t,err){const el=$('#status');el.textContent=t;el.classList.toggle('err',!!err)}
+function savedStatus(){
+  if(S.demo)return setStatus('Eksempeldata – gemmes ikke');
+  setStatus(Store.mode==='db'?'Gemt':'Ikke logget ind');
+}
+function markDirty(id){
+  if(S.demo||Store.mode==='memory')return;
+  Store.dirty.add(id);clearTimeout(Store.timers[id]);setStatus('Gemmer…');
+  Store.timers[id]=setTimeout(()=>flush(id),450);
+}
+function markMonth(key){markDirty('m-'+key)}
+async function writeDoc(id){
+  const T=Store.sb.from('budget_docs');let r;
+  if(id==='settings')r=await T.upsert({user_id:Store.uid,id,data:clone(S.settings),updated_at:new Date().toISOString()});
+  else{const items=S.months[id.slice(2)]||[];
+    r=items.length?await T.upsert({user_id:Store.uid,id,data:{items:clone(items)},updated_at:new Date().toISOString()}):await T.delete().eq('id',id)}
+  if(r.error)throw r.error;
+}
+async function flush(id){
+  if(Store.running[id]){Store.again[id]=true;return}
+  Store.running[id]=true;Store.again[id]=false;
+  try{await writeDoc(id)}
+  catch(e){await sleep(800);try{await writeDoc(id)}catch(e2){Store.running[id]=false;setStatus('Ikke gemt endnu – prøver igen',true);Store.timers[id]=setTimeout(()=>flush(id),5000);return}}
+  Store.running[id]=false;
+  if(Store.again[id])return flush(id);
+  Store.dirty.delete(id);if(!Store.dirty.size)savedStatus();
+}
+window.addEventListener('online',()=>{for(const id of Store.dirty)flush(id)});
+let lastRemote='';
+function applyRemote(docs,fromCache){
+  const settings=docs.settings;
+  if(!settings){
+    if(!S.loaded||S.demo){loadSeed();S.loaded=true;savedStatus();S.ui.tab='import';renderAll()}
+    return;
+  }
+  const sig=JSON.stringify(docs);if(sig===lastRemote&&S.loaded&&!S.demo)return;lastRemote=sig;
+  let changed=false;
+  if(!Store.dirty.has('settings')){const ms=migrate(clone(settings));if(JSON.stringify(S.settings)!==JSON.stringify(ms)){S.settings=ms;changed=true}}
+  const remoteKeys=new Set();
+  for(const id in docs){if(!id.startsWith('m-'))continue;const key=id.slice(2);remoteKeys.add(key);
+    if(Store.dirty.has(id))continue;const items=(docs[id]&&docs[id].items)||[];
+    if(JSON.stringify(S.months[key]||[])!==JSON.stringify(items)){S.months[key]=clone(items);changed=true}}
+  for(const key of Object.keys(S.months)){if(!remoteKeys.has(key)&&!Store.dirty.has('m-'+key)&&!S.demo){delete S.months[key];changed=true}}
+  if(S.demo){S.demo=false;changed=true}
+  const first=!S.loaded;S.loaded=true;
+  if(changed||first){savedStatus();renderAll(true)}
+}
+async function sync(){
+  try{const r=await Store.sb.from('budget_docs').select('id,data');if(r.error)throw r.error;const docs={};for(const d of r.data)docs[d.id]=d.data;applyRemote(docs,false)}
+  catch(e){setStatus('Kan ikke hente dine data – tjek forbindelsen',true)}
+}
+function showLogin(msg){
+  Store.mode='memory';document.body.classList.add('nologin');setStatus('');
+  $('#banner').innerHTML='';
+  $('#main').innerHTML='<form class="panel login" id="loginForm"><h1>Log ind</h1><p class="sub" style="margin:0">Dit private budget. Du forbliver logget ind på denne enhed.</p>'+
+    '<label class="field"><span class="label">Mail</span><input class="inp" id="lgMail" type="email" autocomplete="username" required></label>'+
+    '<label class="field"><span class="label">Adgangskode</span><input class="inp" id="lgPass" type="password" autocomplete="current-password" required></label>'+
+    (msg?'<div class="callout bad"><p>'+esc(msg)+'</p></div>':'')+'<button class="btn primary" type="submit" id="lgBtn">Log ind</button></form>';
+}
+async function doLogin(){
+  const b=$('#lgBtn');if(b){b.disabled=true;b.textContent='Logger ind…'}
+  const r=await Store.sb.auth.signInWithPassword({email:$('#lgMail').value.trim(),password:$('#lgPass').value});
+  if(r.error||!r.data.session)return showLogin('Forkert mail eller adgangskode.');
+  startSession(r.data.session);
+}
+async function logout(){try{await Store.sb.auth.signOut()}catch(e){}location.reload()}
+function startSession(sess){
+  Store.uid=sess.user.id;Store.email=sess.user.email||'';Store.mode='db';document.body.classList.remove('nologin');
+  $('#main').innerHTML='<div class="empty">Henter dine data…</div>';setStatus('Henter…');sync();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Store.mode==='db'&&!Store.dirty.size)sync()});
+async function initStore(){
+  if(!window.supabase){setStatus('Kunne ikke starte',true);$('#main').innerHTML='<div class="callout bad"><p>Siden kunne ikke starte. Tjek forbindelsen og genindlæs.</p></div>';return}
+  Store.sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+  let sess=null;try{const r=await Store.sb.auth.getSession();sess=r.data&&r.data.session}catch(e){}
+  if(sess)startSession(sess);else showLogin();
+}
+
+/* ---------- rendering shell ---------- */
+function renderBanner(){
+  const b=$('#banner');
+  if(S.demo){b.innerHTML='<div class="banner"><div class="wrap"><p><b>Du ser eksempeldata.</b> Tallene er opdigtede, så du kan se hvordan Budget virker. Intet gemmes, før du starter dit eget budget.</p><button class="btn primary" type="button" data-act="start">Start mit eget budget</button><button class="btn" type="button" data-act="goimport">Importér Nykredit-fil</button></div></div>'}
+  else b.innerHTML='';
+}
+function renderHeader(){
+  const n=inbox().length;$('#katCount').textContent=n;$('#katBtn').classList.toggle('zero',!n);
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===S.ui.tab)));
+}
+function renderAll(keepScroll){
+  if(!S.settings)return;
+  _domAcc=null;
+  if(S.loaded&&!S.demo&&!S._repaired){S._repaired=1;if(repairOutside())toast('Overførsler til lån og klassekasser tæller nu som udgifter')}
+  const y=window.scrollY;
+  renderBanner();renderHeader();
+  const v={oversigt:vOversigt,likviditet:vLikviditet,budget:vBudget,fordeling:vFordeling,trans:vTrans,regler:vRegler,import:vImport}[S.ui.tab]||vOversigt;
+  $('#main').innerHTML=v();
+  if(S.ui.tab==='budget')bindBudget();
+  if(S.ui.tab==='import')bindImport();
+  if(keepScroll)window.scrollTo(0,y);
+}
+function monthPick(){return '<div class="monthpick"><button type="button" data-act="mprev" aria-label="Forrige måned">‹</button><span>'+mLabel(S.ui.month,true)+'</span><button type="button" data-act="mnext" aria-label="Næste måned">›</button></div>'}
+
+/* ---------- Oversigt ---------- */
+function vOversigt(){
+  const keys=monthKeysFor();const cats=S.settings.cats;
+  const R=ROLES.some(x=>x[0]===S.ui.ovRole)?S.ui.ovRole:'';const A=R?roleAcc(R):'';
+  const bud=c=>keys.reduce((s,k)=>s+budgetFor(c,mNum(k),+k.slice(0,4)),0);
+  let incB=0,incA=0,expB=0,expA=0;
+  const rowsByG={};
+  for(const c of cats){const t=G(c.g).type;if(t==='ignore')continue;if(R&&(t!=='expense'||!(roleOf(c)===R||(R==='diverse'&&roleOf(c)==='opspar'))))continue;const b=bud(c),a=actualIn(c.id,keys);
+    if(t==='income'){incB+=b;incA+=a}else{expB+=b;expA+=a}
+    (rowsByG[c.g]=rowsByG[c.g]||[]).push({c,b,a,t})}
+  let unc=0,uncN=0;for(const k of keys)for(const t of (S.months[k]||[]))if(counts(t)&&(!t.c||!catById(t.c))&&(!R||(A&&t.acc===A))){unc+=t.a;uncN++}
+  const res=incA-expA;
+  let h='<div class="seg acctabs" role="group" aria-label="Vælg budget"><button type="button" data-act="ovrole" data-r="" aria-pressed="'+!R+'">Hele husholdningen</button>'+ROLES.slice(0,3).map(x=>'<button type="button" data-act="ovrole" data-r="'+x[0]+'" aria-pressed="'+(x[0]===R)+'">'+x[1]+'</button>').join('')+'</div>'+'<div class="row spread"><div><h1>'+(R?'Budget: '+ROLE(R)[1]+' <span class="muted" style="font-weight:500;font-size:17px">· '+(A?esc(accName(A)):ROLE(R)[2])+'</span>':'Budget mod forbrug')+'</h1><p class="sub">'+(S.ui.ytd?'År til dato, januar – '+MONL[mNum(S.ui.month)-1]+' '+S.ui.month.slice(0,4):'Hele '+mLabel(S.ui.month,true))+(R?'':'. Alle konti, overførsler mellem egne konti er trukket fra')+'. Sammenlignet med <b>budget '+srcYear(+S.ui.month.slice(0,4))+'</b>. Forbruget kommer fra dine importerede transaktioner.</p></div><div class="row">'+monthPick()+'<div class="seg"><button type="button" data-act="ytd0" aria-pressed="'+!S.ui.ytd+'">Måned</button><button type="button" data-act="ytd1" aria-pressed="'+S.ui.ytd+'">År til dato</button></div></div></div>';
+  let unalloc=null;
+  if(R){const sal=A?accSaldo(A):null;
+  if(R==='mad'||R==='diverse'){let pb=0;for(const k of keys){const P=planCalc(+k.slice(0,4)),i=mNum(k)-1;pb+=R==='mad'?P.mad[i]:P.div[i]+P.goals.reduce((s,o)=>s+(o.use[i]||0),0)}unalloc=pb-expB;expB=pb}
+  h+='<div class="kpis">'+
+    kpi(R==='budget'?'Budget':'Overført',kr(expB),(R==='diverse'?'Fra Nemkonto + opsparing til ':'Til ')+(A?esc(accName(A)):ROLE(R)[2]))+
+    kpi('Brugt',kr(expA),(expB?Math.round(expA/expB*100):0)+' % af budgettet',expA>expB&&expB?'neg':'')+
+    kpi('Tilbage',kr(expB-expA),expB-expA<0?'Over budget':'Kan stadig bruges',expB-expA<0?'neg':'pos')+
+    kpi('Saldo',sal?kr(sal.s):'–',sal?'Pr. '+sal.d.split('-').reverse().join('-'):'Ingen saldo i importen')+
+    kpi('Mangler kategori',uncN+' stk.',uncN?kr(Math.abs(unc))+' i alt · <button class="btn ghost" style="padding:0 4px" type="button" data-act="openkat">kategorisér</button>':'Alt er på plads')+
+  '</div>';
+  }else
+  h+='<div class="kpis">'+
+    kpi('Indtægter',kr(incA),'Budget '+kr(incB))+
+    kpi('Udgifter',kr(expA),'Budget '+kr(expB)+' · '+(expB?Math.round(expA/expB*100):0)+' % brugt',expA>expB&&expB?'neg':'')+
+    kpi('Resultat',kr(res),'Budgetteret '+kr(incB-expB),res<0?'neg':'pos')+
+    kpi('Mangler kategori',uncN+' stk.',uncN?kr(Math.abs(unc))+' i alt · <button class="btn ghost" style="padding:0 4px" type="button" data-act="openkat">kategorisér</button>':'Alt er på plads')+
+  '</div>';
+  h+='<div class="tablewrap"><table class="ovt"><thead><tr><th>Kategori</th><th class="r">Budget</th><th class="r">Faktisk</th><th class="r">Rest</th><th style="width:28%">Forbrug</th><th>Status</th></tr></thead><tbody>';
+  for(const g of grp()){const rows=rowsByG[g.id];if(!rows||!rows.length)continue;
+    const gb=rows.reduce((s,r)=>s+r.b,0),ga=rows.reduce((s,r)=>s+r.a,0);
+    h+='<tr class="grp"><td>'+esc(g.name)+'</td><td class="r num" data-l="Budget">'+kr(gb)+'</td><td class="r num" data-l="Faktisk">'+kr(ga)+'</td><td class="r num" data-l="Rest">'+kr(gb-ga)+'</td><td></td><td></td></tr>';
+    for(const r of rows){
+      const rest=r.b-r.a;const pct=r.b?r.a/r.b:(r.a?2:0);
+      let pill='',cls='';
+      if(r.t==='income'){pill=r.a>=r.b&&r.b?'<span class="pill ok">Modtaget</span>':r.b?'<span class="pill info">Afventer '+kr(r.b-r.a)+'</span>':''}
+      else if(!r.b&&r.a>0){pill='<span class="pill bad">Ikke budgetteret</span>';cls='over'}
+      else if(pct>1.0001){pill='<span class="pill bad">Over med '+kr(r.a-r.b)+'</span>';cls='over'}
+      else if(pct>=.9&&r.b){pill='<span class="pill warn">'+Math.round(pct*100)+' %</span>';cls='warn'}
+      else if(r.b){pill='<span class="pill ok">'+Math.round(pct*100)+' %</span>'}
+      if(!r.b&&!r.a)continue;
+      const txs=[];for(const k of keys)for(const t of (S.months[k]||[]))if(t.c===r.c.id&&counts(t))txs.push(t);
+      const open=S.ui.ovOpen===r.c.id;
+      h+='<tr'+(open?' class="ovopen"':'')+'><td>'+(txs.length?'<button class="linkbtn" type="button" data-act="ovtoggle" data-id="'+r.c.id+'" aria-expanded="'+open+'"><span class="caret">'+(open?'▾':'▸')+'</span>'+esc(r.c.name)+' <span class="muted">'+txs.length+'</span></button>':'<span style="padding-left:18px">'+esc(r.c.name)+'</span>')+'</td><td class="r num" data-l="Budget">'+kr(r.b)+'</td><td class="r num" data-l="Faktisk">'+kr(r.a)+'</td><td class="r num '+(rest<0&&r.t!=='income'?'neg':'')+'" data-l="Rest">'+kr(rest)+'</td><td><div class="bar"><i class="'+cls+'" style="width:'+Math.min(100,pct*100)+'%"></i></div></td><td>'+pill+'</td></tr>';
+      if(open){txs.sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);const hasAcc=(S.settings.accounts||[]).length>0;
+        h+='<tr class="ovdetail"><td colspan="6"><div class="ovlist">'+txs.map(t=>'<div class="ovrow"><span class="num muted">'+t.d.split('-').reverse().join('-')+'</span>'+(hasAcc?'<span class="muted ovacc">'+esc(accName(t.acc))+'</span>':'')+'<span class="ovtext">'+esc(t.t)+(t.t2?' <span class="muted">'+esc(t.t2.slice(0,50))+'</span>':'')+'</span><span class="num r">'+kr2(t.a)+'</span><select class="inp" data-tx="'+t.id+'" data-k="'+t.d.slice(0,7)+'" aria-label="Flyt til kategori" style="padding:3px 6px">'+catOptions(t.c)+'</select><button class="x" type="button" data-act="ovunset" data-id="'+t.id+'" title="Fjern kategori – send til Kategorisér" aria-label="Fjern kategori">✕</button></div>').join('')+'</div></td></tr>'}
+    }
+  }
+  if(unalloc!=null&&Math.abs(unalloc)>=1)h+='<tr><td><span style="padding-left:18px">Ikke fordelt på poster</span></td><td class="r num '+(unalloc<0?'neg':'')+'" data-l="Budget">'+kr(unalloc)+'</td><td class="r num" data-l="Faktisk">'+kr(0)+'</td><td class="r num" data-l="Rest">'+kr(unalloc)+'</td><td></td><td>'+(unalloc<0?'<span class="pill bad">Poster over rammen</span>':'<span class="pill info">Fri til at bruge</span>')+'</td></tr>';
+  h+='</tbody></table></div>';
+  if(R&&!Object.keys(rowsByG).length)h+='<div class="callout warn"><p>Ingen poster hører til budgettet '+ROLE(R)[1]+' endnu. Gå til <button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="budget">Budget</button> og vælg kontoen ud for de poster, der betales derfra.</p></div>';
+  if(!allTx().length&&!S.demo)h=`<div class="callout ok"><p><b>Dit budget er indlæst.</b> Næste trin: hent en CSV-fil med alle konti fra Nykredits netbank, og træk den ind under <button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="import">Import</button>. Så kobler appen selv dine budgetter til Budgetkonto, Madkonto, Diversekonto og Nemkontoen.</p></div>`+h;
+  if(!cats.some(c=>{const b=budObj(c,+S.ui.month.slice(0,4));return +b.amt||(b.m||[]).some(Boolean)}))h+='<div class="callout warn"><p>Du har ikke lagt et budget ind endnu. Gå til <button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="budget">Budget</button> og skriv beløbene ind – så fylder oversigten sig selv ud.</p></div>';
+  return h;
+}
+function kpi(l,v,s,cls){return '<div class="kpi"><span class="label">'+l+'</span><span class="v '+(cls||'')+'">'+v+'</span><span class="s">'+s+'</span></div>'}
+
+/* ---------- Fordeling ---------- */
+function planCalc(y){
+  const st=S.settings;const plan=st.plan||{};const cats=st.cats;
+  const z=()=>Array(12).fill(0);const inc=z(),bud=z(),mad=z(),div=z(),lon=z(),save=z();const incRows=[],lonRows=[];
+  for(const c of cats){const t=G(c.g).type;if(t==='ignore')continue;const arr=Array.from({length:12},(_,i)=>budgetFor(c,i+1,y));
+    if(t==='income'){arr.forEach((v,i)=>inc[i]+=v);incRows.push([c.name,arr,c.id]);continue}
+    const r=roleOf(c);const tgt=r==='mad'?mad:r==='diverse'?div:r==='lon'?lon:r==='opspar'?null:bud;if(!tgt)continue;arr.forEach((v,i)=>tgt[i]+=v);
+    if(r==='lon'&&arr.some(Boolean))lonRows.push([c.name,arr])}
+  const pa=k=>{const a=plan[k];return Array.from({length:12},(_,i)=>a&&a[i]!=null&&a[i]!==''?+a[i]||0:null)};
+  const gl=(st.goals||[]).map(g=>({g,pm:gPm(g),use:Array.from({length:12},(_,i)=>+(g.use||[])[i]||0)}));
+  const saveB=Array.from({length:12},()=>gl.reduce((s,o)=>s+o.pm,0));const saveSet=pa('save');const saveManual=saveSet.some(v=>v!=null);
+  const saveP=saveB.map((v,i)=>saveSet[i]!=null?saveSet[i]:v);const pmTot=gl.reduce((s,o)=>s+o.pm,0);
+  const goals=gl.map(o=>{const share=pmTot?o.pm/pmTot:1/(gl.length||1);let s=+o.g.start||0;const dep=saveP.map(v=>saveManual?v*share:o.pm);const sal=o.use.map((u,i)=>s=s+dep[i]-u);return {g:o.g,pm:o.pm,dep,sal,use:o.use}});
+  for(let i=0;i<12;i++)save[i]=saveP[i];
+  let ps=gl.reduce((s,o)=>s+(+o.g.start||0),0);const useTot=Array.from({length:12},(_,i)=>gl.reduce((s,o)=>s+o.use[i],0));const potSal=saveP.map((v,i)=>ps=ps+v-useTot[i]);
+  const start=+plan.start||0,buf=plan.buffer==null?6000:+plan.buffer||0;const year=bud.reduce((s,v)=>s+v,0);
+  let need=(year+buf-start)/12,cum=0;for(let k=1;k<=12;k++){cum+=bud[k-1];need=Math.max(need,(cum-start)/k)}
+  const auto=Math.max(0,Math.ceil(need/100)*100);const T=plan.fixed!=null&&plan.fixed!==''?+plan.fixed||0:auto;
+  let s=start;const bsal=bud.map(v=>s=s+T-v);const low=bsal.reduce((a,v,i)=>v<a.v?{v,i}:a,{v:Infinity,i:0});
+  const madSet=pa('mad'),divSet=pa('div');const madB=mad.slice(),divB=div.slice();
+  const madP=madB.map((v,i)=>madSet[i]!=null?madSet[i]:v),divP=divB.map((v,i)=>divSet[i]!=null?divSet[i]:v);
+  const avail=inc.map((v,i)=>v-T-lon[i]-save[i]);const nemMin=+plan.nemMin||0;
+  const rest=avail.map((v,i)=>v-madP[i]-divP[i]);let nc=+plan.nemStart||0;const nemCum=rest.map(v=>nc=nc+v);
+  const cumF=(p,b,st)=>{let c=+st||0;return p.map((v,i)=>c=c+v-b[i])};const madCum=cumF(madP,madB,plan.madStart),divCum=cumF(divP,divB,plan.divStart);
+  return {nemCum,nemStart:+plan.nemStart||0,saveB,saveSet,saveManual,potSal,useTot,madCum,divCum,inc,incRows,bud,mad:madP,div:divP,madB,divB,madSet,divSet,avail,nemMin,lon,lonRows,save,goals,T,auto,start,buf,year,bsal,low,rest};
+}
+function incRow(r){const [name,arr,id]=r;const same=arr.every(v=>v===arr[0])?arr[0]:null;
+  return '<tr><td>'+esc(name)+'<div class="pm"><span>Pr. md.</span><input class="amt" id="ia_'+id+'" data-incall="'+id+'" inputmode="decimal" value="'+(same?nf0.format(same):'')+'" placeholder="'+(same===0?'0':'–')+'"  aria-label="'+esc(name)+' pr. måned"></div></td>'+
+    arr.map((v,i)=>'<td class="m mi"><input class="amt mm" id="im_'+id+'_'+i+'" data-inc="'+id+'" data-i="'+i+'" inputmode="decimal" value="'+(v?nf0.format(v):'')+'" placeholder="0" aria-label="'+esc(name)+' '+MONL[i]+'"></td>').join('')+
+    '<td class="m has"><b>'+nf0.format(Math.round(arr.reduce((s,v)=>s+v,0)))+'</b></td></tr>'}
+function saveRow(P,acc){const set=P.saveSet,vals=P.save,same=set.every(v=>v!=null&&v===set[0])?set[0]:null;
+  return '<tr><td><b>Til Opsparing</b> <span class="muted">· '+acc+'</span><div class="pm"><span>Pr. md.</span><input class="amt" id="xa_save" data-xall="save" inputmode="decimal" value="'+(same!=null?nf0.format(same):'')+'" placeholder="'+nf0.format(P.saveB[0])+'" aria-label="Til opsparing pr. måned"></div></td>'+
+    vals.map((v,i)=>'<td class="m mi"><input class="amt mm" id="xm_save_'+i+'" data-xm="save" data-i="'+i+'" inputmode="decimal" value="'+(set[i]!=null?nf0.format(set[i]):'')+'" placeholder="'+nf0.format(P.saveB[i])+'" aria-label="Til opsparing '+MONL[i]+'"></td>').join('')+
+    '<td class="m has"><b>'+nf0.format(Math.round(vals.reduce((s,v)=>s+v,0)))+'</b></td></tr>'+
+    '<tr><td class="muted" style="font-size:12.5px;padding-left:14px">Målene bruger</td>'+P.useTot.map(v=>'<td class="m" style="font-size:12px">'+(v?nf0.format(Math.round(v)):'')+'</td>').join('')+'<td class="m" style="font-size:12px">'+nf0.format(Math.round(P.useTot.reduce((s,v)=>s+v,0)))+'</td></tr>'+
+    '<tr><td class="muted" style="font-size:12.5px;padding-left:14px">Saldo på Opsparing</td>'+P.potSal.map(v=>'<td class="m has '+(v<0?'neg':'')+'" style="font-size:12px">'+nf0.format(Math.round(v))+'</td>').join('')+'<td></td></tr>';}
+function xferRow(k,label,acc,vals,set,bud,cum,st){
+  const same=set.every(v=>v!=null&&v===set[0])?set[0]:null;
+  return '<tr><td><b>'+label+'</b> <span class="muted">· '+acc+'</span><div class="pm"><span>Pr. md.</span><input class="amt" id="xa_'+k+'" data-xall="'+k+'" inputmode="decimal" value="'+(same!=null?nf0.format(same):'')+'" placeholder="'+nf0.format(Math.round(bud[0]))+'"  aria-label="'+label+' pr. måned"></div></td>'+
+    vals.map((v,i)=>'<td class="m mi"><input class="amt mm" id="xm_'+k+'_'+i+'" data-xm="'+k+'" data-i="'+i+'" inputmode="decimal" value="'+(set[i]!=null?nf0.format(set[i]):'')+'" placeholder="'+nf0.format(Math.round(bud[i]))+'" aria-label="'+label+' '+MONL[i]+'"></td>').join('')+
+    '<td class="m has"><b>'+nf0.format(Math.round(vals.reduce((s,v)=>s+v,0)))+'</b></td></tr>'+
+    '<tr><td class="muted" style="font-size:12.5px;padding-left:14px">Fordelt på poster</td>'+bud.map(v=>'<td class="m" style="font-size:12px">'+nf0.format(Math.round(v))+'</td>').join('')+'<td class="m" style="font-size:12px">'+nf0.format(Math.round(bud.reduce((s,v)=>s+v,0)))+'</td></tr>'+
+    '<tr><td class="muted" style="font-size:12.5px;padding-left:14px">Saldo på kontoen<div class="pm"><span>Start 1. jan</span><input class="amt" id="xs_'+k+'" data-pf="'+k+'Start" inputmode="decimal" value="'+(+st?nf0.format(st):'')+'" placeholder="0" aria-label="Saldo 1. januar"></div></td>'+cum.map(v=>'<td class="m has '+(v<0?'neg':'')+'" style="font-size:12px">'+nf0.format(Math.round(v))+'</td>').join('')+'<td></td></tr>';
+}
+function vFordeling(){
+  const y=S.ui.budgetYear,ys=yearList();const P=planCalc(y);const plan=S.settings.plan||{};
+  const sum=a=>a.reduce((s,v)=>s+v,0);
+  const cells=(a,cls)=>a.map(v=>'<td class="m has '+(cls&&v<0?'neg':'')+'">'+(v?nf0.format(Math.round(v)):'')+'</td>').join('')+'<td class="m has"><b>'+nf0.format(Math.round(sum(a)))+'</b></td>';
+  const head='<th>Post</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'<th class="r">Året</th>';
+  const rac=r=>{const no=roleAcc(r);return no?esc(accName(no)):ROLE(r)[2]};
+  let h='<div class="row spread" style="align-items:flex-end"><div><h1>Fordeling '+y+'</h1><p class="sub">Lønnen kommer ind på Nemkontoen og fordeles herfra til Budget, Mad, Diverse og Opsparing. Skriv jeres udbetaling efter skat for hver måned. Fritvalg skrives i den måned, det udbetales, og kan sættes ind på Opsparing samme måned.</p></div>'+
+    '<div class="seg">'+ys.map(v=>'<button type="button" data-act="byear" data-y="'+v+'" aria-pressed="'+(v===y)+'">'+v+'</button>').join('')+'</div></div>';
+  h+='<div class="kpis">'+kpi('Til Budgetkonto pr. md.',kr(P.T),plan.fixed!=null&&plan.fixed!==''?'Fast beløb · beregnet: '+kr(P.auto):'Dækker hele året + '+kr(P.buf)+' ekstra')+
+    kpi('Laveste saldo på Budgetkonto',kr(P.low.v),'I '+MONL[P.low.i],P.low.v<0?'neg':'')+
+    kpi('Til opsparing',kr(P.save.reduce((s,v)=>s+v,0)),'På året · '+(P.saveManual?'dine beløb':'samme beløb hver måned'),P.potSal.some(v=>v<0)?'neg':'')+
+    kpi('Til rådighed for Mad og Diverse',kr(Math.round(sum(P.avail)/12)),'Snit pr. md. efter Budget og Opsparing')+kpi('Saldo på Nemkonto 31. dec.',kr(P.nemCum[11]),'Laveste: '+kr(Math.min(...P.nemCum))+' i '+MONL[P.nemCum.indexOf(Math.min(...P.nemCum))],P.nemCum.some(v=>v<P.nemMin)?'neg':'pos')+'</div>';
+  if(P.nemCum.some(v=>v<P.nemMin))h+='<div class="callout bad"><p><b>Saldoen på Nemkontoen kommer under '+kr(P.nemMin)+' i '+P.nemCum.map((v,i)=>v<P.nemMin?MONL[i]:null).filter(Boolean).join(', ')+'.</b> Overskud fra tidligere måneder er regnet med. Sænk overførslen til Mad, Diverse eller Opsparing i månederne før, eller skriv saldoen 1. januar.</p></div>';
+  if(P.potSal.some(v=>v<0))h+='<div class="callout warn"><p><b>Opsparingen har ikke penge nok i '+P.potSal.map((v,i)=>v<0?MONL[i]:null).filter(Boolean).join(', ')+'.</b> Pengene skal bruges, før der er sat nok ind. Sæt mere ind i månederne før, fx når fritvalget udbetales, eller skriv en startsaldo på målene.</p></div>';
+  h+='<div class="tablewrap"><table class="xfer"><thead><tr>'+head+'</tr></thead><tbody>'+
+    '<tr class="grp"><td colspan="14">Ind på Nemkontoen</td></tr>'+P.incRows.map(r=>incRow(r)).join('')+
+    '<tr class="tot"><td>Indtægter i alt</td>'+cells(P.inc)+'</tr>'+
+    '<tr class="grp"><td colspan="14">Overføres fra Nemkontoen</td></tr>'+
+    '<tr><td>Til Budget <span class="muted">· '+rac('budget')+'</span></td>'+cells(Array(12).fill(P.T))+'</tr>'+
+    saveRow(P,rac('opspar'))+
+    P.lonRows.map(r=>'<tr><td>'+esc(r[0])+' <span class="muted">· betales fra Nemkonto</span></td>'+cells(r[1])+'</tr>').join('')+
+    '<tr class="tot"><td>Til rådighed for Mad og Diverse</td>'+cells(P.avail,1)+'</tr>'+
+    '<tr class="grp"><td colspan="14">Din fordeling <span class="muted" style="font-weight:400">– skriv beløbet ud for “Pr. md.”, eller ret de enkelte måneder</span></td></tr>'+
+    xferRow('mad','Til Mad',rac('mad'),P.mad,P.madSet,P.madB,P.madCum,plan.madStart)+xferRow('div','Til Diverse',rac('diverse'),P.div,P.divSet,P.divB,P.divCum,plan.divStart)+
+    '<tr><td>Tilbage på Nemkontoen i måneden</td>'+P.rest.map(v=>'<td class="m has '+(v<0?'neg':'')+'">'+nf0.format(Math.round(v))+'</td>').join('')+'<td class="m has"><b>'+nf0.format(Math.round(sum(P.rest)))+'</b></td></tr>'+
+    '<tr class="tot"><td>Saldo på Nemkontoen ultimo<div class="pm"><span>Start 1. jan</span><input class="amt" id="xs_nem" data-pf="nemStart" inputmode="decimal" value="'+(P.nemStart?nf0.format(P.nemStart):'')+'" placeholder="0" aria-label="Saldo på Nemkonto 1. januar"></div></td>'+P.nemCum.map(v=>'<td class="m has '+(v<P.nemMin?'neg':'')+'"><b>'+nf0.format(Math.round(v))+'</b></td>').join('')+'<td class="m has"><b class="'+(P.nemCum[11]<P.nemMin?'neg':'')+'">'+nf0.format(Math.round(P.nemCum[11]))+'</b></td></tr></tbody></table></div>'+
+    '<div class="panel row" style="gap:16px;align-items:flex-end"><label class="field"><span class="label">Laveste ønskede saldo på Nemkonto</span><input id="pf_nemMin" class="num" data-pf="nemMin" inputmode="decimal" value="'+(P.nemMin?nf0.format(P.nemMin):'')+'" placeholder="0"></label>'+
+    '<button class="btn" type="button" data-act="restsave">Overskud til Opsparing</button><button class="btn ghost" type="button" data-act="resetxfer">Brug budgettets beløb</button>'+
+    '<span class="muted" style="flex:1 1 260px">“Overskud til Opsparing” sætter alt over din laveste ønskede saldo ind på Opsparing hver måned. Bagefter kan du rette de enkelte måneder op og ned. Beløbet til Mad og Diverse er rammen. Fordel den derefter på poster som dagligvarer, café og bager under fanen Budget. “Saldo på kontoen” viser, hvad der står tilbage, når overskud føres videre fra måned til måned. Et rødt tal betyder, at kontoen går i minus den måned.</span></div>';
+  // Budgetkonto
+  const bs=roleAcc('budget')?accSaldo(roleAcc('budget')):null;
+  h+='<div class="panel"><h2>Budgetkontoen hele året</h2><p class="sub">Overførslen er den samme hver måned og sat, så saldoen aldrig går i minus, også i de dyre måneder, og så der er '+kr(P.buf)+' tilovers ved årets udgang. Dyre måneder dækkes af de billige.</p>'+
+    '<div class="row" style="gap:16px;margin-top:12px;align-items:flex-end">'+
+    '<label class="field"><span class="label">Saldo 1. januar '+y+'</span><input id="pf_start" class="num" data-pf="start" inputmode="decimal" value="'+(plan.start==null||plan.start===''?'':nf0.format(plan.start))+'" placeholder="0"></label>'+
+    '<label class="field"><span class="label">Ekstra til overs for året</span><input id="pf_buffer" class="num" data-pf="buffer" inputmode="decimal" value="'+nf0.format(P.buf)+'"></label>'+
+    '<label class="field"><span class="label">Fast beløb pr. md. (tom = beregnet)</span><input id="pf_fixed" class="num" data-pf="fixed" inputmode="decimal" value="'+(plan.fixed==null||plan.fixed===''?'':nf0.format(plan.fixed))+'" placeholder="'+nf0.format(P.auto)+'"></label>'+
+    (bs?'<span class="muted">Saldo i dag: <b class="num">'+kr(bs.s)+'</b> ('+bs.d.split('-').reverse().join('-')+')</span>':'')+'</div>'+
+    '<div class="tablewrap" style="margin-top:12px"><table class="xfer"><thead><tr>'+head+'</tr></thead><tbody>'+
+    '<tr><td>Ind fra Nemkonto</td>'+cells(Array(12).fill(P.T))+'</tr><tr><td>Faste udgifter</td>'+cells(P.bud.map(v=>-v))+'</tr>'+
+    '<tr class="tot"><td>Saldo ultimo</td>'+P.bsal.map(v=>'<td class="m has '+(v<0?'neg':'')+'">'+nf0.format(Math.round(v))+'</td>').join('')+'<td></td></tr></tbody></table></div></div>';
+  // Goals
+  const ecats=S.settings.cats.filter(c=>G(c.g).type==='expense');
+  h+='<div class="panel"><div class="row spread"><div><h2>Opsparingsmål</h2><p class="sub">Hver måned sættes beløbet ind på Opsparing. Når pengene skal bruges, flyttes de fra Opsparing til Diversekontoen, og købet betales derfra. Overførslen tæller ikke som udgift, kun selve købet. Skriv i månederne, hvornår pengene skal bruges.'+(P.saveManual?' Du har selv sat indbetalingerne under “Til Opsparing” ovenfor. De fordeles på målene efter deres behov pr. måned.':'')+'</p></div><button class="btn" type="button" data-act="addgoal">＋ Nyt mål</button></div>'+
+    '<div class="tablewrap grid" style="margin-top:12px"><table><thead><tr><th>Mål</th><th>Kategori</th><th class="r">Start</th><th class="r">'+(P.saveManual?'Behov pr. md.':'Pr. md.')+'</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'<th></th></tr></thead><tbody>';
+  for(const o of P.goals){const g=o.g;
+    h+='<tr><td><input class="name" id="gn_'+g.id+'" data-gf="name" data-g="'+g.id+'" value="'+esc(g.name)+'" aria-label="Navn på mål" style="min-width:130px"></td>'+
+      '<td><select id="gc_'+g.id+'" data-gf="cat" data-g="'+g.id+'" aria-label="Kategori for '+esc(g.name)+'">'+ecats.map(c=>'<option value="'+c.id+'"'+(c.id===g.cat?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td>'+
+      '<td><input class="amt" id="gs_'+g.id+'" data-gf="start" data-g="'+g.id+'" inputmode="decimal" value="'+(+g.start?nf0.format(g.start):'')+'" placeholder="0" style="min-width:70px" aria-label="Startsaldo"></td>'+
+      '<td><input class="amt" id="gp_'+g.id+'" data-gf="pm" data-g="'+g.id+'" inputmode="decimal" value="'+(g.pm!=null&&g.pm!==''?nf0.format(g.pm):'')+'" placeholder="'+nf0.format(o.pm)+'" style="min-width:70px" aria-label="Pr. måned"></td>'+
+      o.use.slice(0,12).map((v,i)=>'<td class="m mi"><input class="amt mm" id="gu_'+g.id+'_'+i+'" data-gf="use" data-i="'+i+'" data-g="'+g.id+'" inputmode="decimal" value="'+(v?nf0.format(v):'')+'" placeholder="–" style="min-width:58px" aria-label="Brug i '+MONL[i]+'"></td>').join('')+
+      '<td><button class="x" type="button" data-act="delgoal" data-g="'+g.id+'" aria-label="Slet '+esc(g.name)+'">✕</button></td></tr>'+
+      '<tr><td colspan="4" class="muted" style="font-size:12.5px;padding-left:14px">Saldo ultimo</td>'+o.sal.map(v=>'<td class="m has '+(v<0?'neg':'')+'" style="font-size:12px">'+nf0.format(Math.round(v))+'</td>').join('')+'<td></td></tr>';}
+  const tot=Array(12).fill(0);P.goals.forEach(o=>o.sal.forEach((v,i)=>tot[i]+=v));
+  const os=accList().filter(a=>accType(a.no)==='opsparing').map(a=>accSaldo(a.no)).filter(Boolean).reduce((s,x)=>s+x.s,0);
+  h+='<tr class="tot"><td colspan="4">Opsparing i alt, saldo ultimo</td>'+tot.map(v=>'<td class="m has '+(v<-0.5?'neg':'')+'">'+nf0.format(Math.round(v)||0)+'</td>').join('')+'<td></td></tr></tbody></table></div>'+
+    ((P.saveManual?P.potSal.some(v=>v<-0.5):P.goals.some(o=>o.sal.some(v=>v<-0.5)))?'<div class="callout warn" style="margin-top:12px"><p>Et mål går i minus i løbet af året. Hæv beløbet pr. måned eller skriv en startsaldo.</p></div>':'')+
+    (accList().some(a=>accType(a.no)==='opsparing')?'<p class="sub">Saldo på opsparingskonti i dag: <b class="num">'+kr(os)+'</b>. Fordel den som startsaldo på målene.</p>':'')+'</div>';
+  // Kontokobling + kontrol
+  h+='<div class="panel"><h2>Konti</h2><p class="sub">Hvilken konto hører til hvilket budget. Kontiene vælges af sig selv efter navn.</p><div class="row" style="gap:12px;margin-top:10px;flex-wrap:wrap">'+
+    ROLES.map(x=>'<label class="field"><span class="label">'+x[1]+'</span><select id="rl_'+x[0]+'" class="inp" data-role="'+x[0]+'">'+(accList().length?'<option value="">Vælg konto</option>'+accList().map(a=>'<option value="'+esc(a.no)+'"'+(roleAcc(x[0])===a.no?' selected':'')+'>'+esc(a.name)+'</option>').join(''):'<option>Importér først</option>')+'</select></label>').join('')+'</div></div>';
+  h+=vKontrol(P);
+  return h;
+}
+function vKontrol(P){
+  const k=S.ui.month;const m=mNum(k);const list=(S.months[k]||[]).filter(t=>t.x&&counts(t));
+  let h='<div class="panel"><div class="row spread"><div><h2>Kontrol af interne overførsler</h2><p class="sub">Overførsler mellem jeres egne konti tæller ikke med i husholdningens tal. Hver overførsel skal have en modpostering på en anden konto, ellers står den her.</p></div>'+monthPick()+'</div>';
+  if(!allTx().length)return h+'<p class="muted" style="margin-top:10px">Kommer, når du har importeret fra Nykredit.</p></div>';
+  const idx=new Map();list.forEach(t=>{const kk=Math.round(Math.abs(t.a)*100);(idx.get(kk)||idx.set(kk,[]).get(kk)).push(t)});
+  const used=new Set(),un=[];
+  for(const t of list){if(used.has(t))continue;const p=(idx.get(Math.round(Math.abs(t.a)*100))||[]).find(o=>o!==t&&!used.has(o)&&o.acc!==t.acc&&Math.sign(o.a)===-Math.sign(t.a)&&Math.abs(dayNo(o.d)-dayNo(t.d))<=3);if(p){used.add(t);used.add(p)}else un.push(t)}
+  const out=list.filter(t=>t.a<0).reduce((s,t)=>s+t.a,0),inn=list.filter(t=>t.a>0).reduce((s,t)=>s+t.a,0);
+  h+='<div class="kpis" style="margin-top:12px">'+kpi('Overført ud',kr(-out),list.filter(t=>t.a<0).length+(list.filter(t=>t.a<0).length===1?' postering':' posteringer'))+kpi('Overført ind',kr(inn),list.filter(t=>t.a>0).length+(list.filter(t=>t.a>0).length===1?' postering':' posteringer'))+kpi('Forskel',kr(inn+out),Math.abs(inn+out)<1?'Går op':'Bør være 0',Math.abs(inn+out)<1?'pos':'neg')+'</div>';
+  if(un.length)h+='<div class="callout warn" style="margin-top:12px"><p><b>'+un.length+' '+(un.length>1?'overførsler':'overførsel')+' uden modpostering.</b> Måske mangler en konto i importen, eller det er ikke en intern overførsel. Ret kategorien, hvis det er en rigtig udgift.</p></div><div class="ovlist" style="padding-left:0">'+un.map(t=>'<div class="ovrow"><span class="num muted">'+t.d.split('-').reverse().join('-')+'</span><span class="muted ovacc">'+esc(accName(t.acc))+'</span><span class="ovtext">'+esc(t.t)+'</span><span class="num r">'+kr2(t.a)+'</span><select class="inp" data-tx="'+t.id+'" data-k="'+k+'" aria-label="Kategori" style="padding:3px 6px">'+catOptions(t.c)+'</select><span></span></div>').join('')+'</div>';
+  else if(list.length)h+='<div class="callout ok" style="margin-top:12px"><p>Alle interne overførsler i '+mLabel(k,true)+' har en modpostering.</p></div>';
+  // planned vs actual
+  const plan={budget:P.T,mad:P.mad[m-1],diverse:P.div[m-1],opspar:P.save[m-1]};
+  h+='<div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Konto</th><th class="r">Planlagt ind</th><th class="r">Faktisk ind fra egne konti</th><th class="r">Forskel</th></tr></thead><tbody>'+
+    Object.keys(plan).map(r=>{const no=roleAcc(r);const act=no?list.filter(t=>t.acc===no&&t.a>0).reduce((s,t)=>s+t.a,0):0;const d=act-plan[r];
+      return '<tr><td>'+ROLE(r)[1]+' <span class="muted">· '+(no?esc(accName(no)):'ingen konto')+'</span></td><td class="r num">'+kr(plan[r])+'</td><td class="r num">'+(no?kr(act):'–')+'</td><td class="r num '+(d<-1?'neg':'')+'">'+(no?kr(d):'–')+'</td></tr>'}).join('')+'</tbody></table></div></div>';
+  return h;
+}
+
+/* ---------- Likviditet ---------- */
+function latestSaldo(){let best=null;for(const t of allTx())if(typeof t.s==='number'&&(!best||t.d>best.d))best=t;return best}
+function projection(){
+  const st=S.settings;let bal=startBalance().bal;const rows=[];
+  for(let i=0;i<12;i++){
+    const key=addM(CUR,i),m=mNum(key),yy=+key.slice(0,4);let inc=0,out=0;
+    for(const c of st.cats){const t=G(c.g).type;if(t==='ignore')continue;const b=budgetFor(c,m,yy);
+      if(i===0){const a=actualIn(c.id,[key]);const left=Math.max(b-a,0);if(t==='income')inc+=left;else out+=left}
+      else{if(t==='income')inc+=b;else out+=b}}
+    bal+=inc-out;rows.push({key,inc,out,net:inc-out,bal});
+  }
+  return rows;
+}
+function vLikviditet(){
+  const st=S.settings;const rows=projection();const buf=+st.buffer||0;
+  const low=rows.reduce((a,r)=>r.bal<a.bal?r:a,rows[0]);
+  const firstNeg=rows.find(r=>r.bal<0),firstBuf=rows.find(r=>r.bal<buf);
+  let h='<div><h1>Likviditet de næste 12 måneder</h1><p class="sub">Startsaldo plus budgetterede indtægter minus budgetterede udgifter, måned for måned. For '+MONL[mNum(CUR)-1]+' tæller kun det, der er tilbage af budgettet. Saldoen er vist ultimo hver måned.</p><p class="sub">Bruger '+[...new Set(rows.map(r=>srcYear(+r.key.slice(0,4))))].map(y=>'<b>budget '+y+'</b>').join(' og ')+(rows.some(r=>!(S.settings.years||{})[r.key.slice(0,4)])?' – år uden eget budget bruger det seneste. Lav dem under fanen Budget.':'.')+'</p></div>';
+  const sb=startBalance();const accs=st.accounts||[];
+  if(accs.length){
+    h+='<div class="tablewrap"><table><thead><tr><th>Konto</th><th>Nr.</th><th class="r">Saldo</th><th>Seneste bevægelse</th><th>Type</th><th>Med i likviditet</th></tr></thead><tbody>'+
+      accs.map(a=>{const s=accSaldo(a.no);return '<tr><td><input class="inp" data-accname="'+esc(a.no)+'" value="'+esc(a.name)+'" aria-label="Navn på konto" style="padding:4px 8px;min-width:150px"></td><td class="num muted">…'+esc(a.no.slice(-4))+'</td><td class="r num '+(s&&s.s<0?'neg':'')+'">'+(s?kr2(s.s):'–')+'</td><td class="muted">'+(s?dayLabel(s.d):'–')+'</td><td><select class="inp" style="padding:3px 6px" data-acctype="'+esc(a.no)+'" aria-label="Type for '+esc(a.name)+'">'+ATYPES.map(x=>'<option value="'+x[0]+'"'+(accType(a.no)===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></td><td><input type="checkbox" data-accliq="'+esc(a.no)+'"'+(a.liq?' checked':'')+' aria-label="Medtag '+esc(a.name)+'"></td></tr>'}).join('')+
+      '<tr class="tot"><td colspan="2">Saldo i alt</td><td class="r num">'+kr2(sb.bal)+'</td><td colspan="3" class="muted" style="font-weight:400">Udgangspunkt for prognosen</td></tr></tbody></table></div>';
+    h+='<div class="panel row" style="align-items:flex-end;gap:16px"><label class="field"><span class="label">Buffer – laveste ønskede saldo</span><input id="buffer" class="num" inputmode="decimal" value="'+kr2(buf)+'"></label><button class="btn primary" type="button" data-act="savebuf">Opdatér</button><span class="muted" style="flex:1 1 260px">Saldi kommer fra din seneste import. Fjern fx opsparing fra likviditeten, hvis den ikke skal bruges til daglig drift.</span></div>';
+  }else{
+    const ls=latestSaldo();
+    h+='<div class="panel row" style="align-items:flex-end;gap:16px">'+
+    '<label class="field"><span class="label">Saldo i dag (kr.)</span><input id="startBal" class="num" inputmode="decimal" value="'+(st.startBal==null?'':kr2(st.startBal))+'" placeholder="fx 12.500,00"></label>'+
+    '<label class="field"><span class="label">Buffer – laveste ønskede saldo</span><input id="buffer" class="num" inputmode="decimal" value="'+kr2(buf)+'"></label>'+
+    (ls?'<button class="btn" type="button" data-act="usesaldo">Brug saldo fra bankfilen: '+kr(ls.s)+' ('+dayLabel(ls.d)+')</button>':'')+
+    '<button class="btn primary" type="button" data-act="savebal">Opdatér</button></div>';
+  }
+  if(!sb.known)h+='<div class="callout warn"><p>'+(accs.length?'Vælg mindst én konto med saldo, så regner Budget frem.':'Skriv din saldo i dag, så regner Budget frem. Har din Nykredit-fil en saldokolonne, kan du bruge den direkte.')+'</p></div>';
+  else if(firstNeg)h+='<div class="callout bad"><p><b>Der mangler penge i '+mLabel(firstNeg.key,true)+'.</b> Saldoen ender på '+kr(firstNeg.bal)+'. Laveste punkt er '+kr(low.bal)+' i '+mLabel(low.key,true)+'.</p></div>';
+  else if(firstBuf)h+='<div class="callout warn"><p><b>Under din buffer i '+mLabel(firstBuf.key,true)+'</b> ('+kr(firstBuf.bal)+'). Laveste punkt er '+kr(low.bal)+' i '+mLabel(low.key,true)+'.</p></div>';
+  else h+='<div class="callout ok"><p>Saldoen holder sig over din buffer hele året. Laveste punkt er '+kr(low.bal)+' i '+mLabel(low.key,true)+'.</p></div>';
+  h+='<div class="panel chart">'+chart(rows,buf,sb.bal)+'<div class="legend"><span><i style="background:var(--accent)"></i>Saldo ultimo</span><span><i style="background:var(--warn)"></i>Buffer</span><span><i style="background:var(--neg)"></i>Under buffer</span></div></div>';
+  h+='<div class="tablewrap"><table><thead><tr><th>Måned</th><th class="r">Indtægter</th><th class="r">Udgifter</th><th class="r">Netto</th><th class="r">Saldo ultimo</th><th>Største poster</th></tr></thead><tbody>';
+  for(const r of rows){
+    const m=mNum(r.key),yy=+r.key.slice(0,4);const big=S.settings.cats.filter(c=>{const b=budObj(c,yy);return G(c.g).type==='expense'&&(b.f==='m'||+b.f>1)&&budgetFor(c,m,yy)}).map(c=>esc(c.name)+' '+kr(budgetFor(c,m,yy)));
+    h+='<tr><td>'+mLabel(r.key,true)+(r.key===CUR?' <span class="pill info">rest</span>':'')+'</td><td class="r num">'+kr(r.inc)+'</td><td class="r num">'+kr(r.out)+'</td><td class="r num '+(r.net<0?'neg':'')+'">'+kr(r.net)+'</td><td class="r num"><span class="pill '+(r.bal<0?'bad':r.bal<buf?'warn':'ok')+'">'+kr(r.bal)+'</span></td><td class="muted" style="font-size:13px">'+(big.join(' · ')||'–')+'</td></tr>';
+  }
+  return h+'</tbody></table></div>';
+}
+function chart(rows,buf,start){
+  const W=760,H=270,L=72,R=16,T=16,B=34;
+  const vals=rows.map(r=>r.bal).concat([buf,0,+start||0]);
+  let mn=Math.min(...vals),mx=Math.max(...vals);if(mx===mn){mx+=1000;mn-=1000}
+  const span=mx-mn;const raw=span/4;const p=Math.pow(10,Math.floor(Math.log10(raw)));const step=[1,2,2.5,5,10].map(x=>x*p).find(x=>x>=raw);
+  mn=Math.floor(mn/step)*step;mx=Math.ceil(mx/step)*step;
+  const x=i=>L+(W-L-R)*(i/(rows.length-1)),y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn));
+  let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Forventet saldo ultimo måned de næste 12 måneder">';
+  for(let v=mn;v<=mx+1e-6;v+=step){s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'" stroke="var(--line)" stroke-width="1"/><text x="'+(L-8)+'" y="'+(y(v)+4)+'" text-anchor="end">'+nf0.format(v/1000)+'k</text>'}
+  if(mn<0&&mx>0)s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(0)+'" y2="'+y(0)+'" stroke="var(--muted)" stroke-width="1.2"/>';
+  s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(buf)+'" y2="'+y(buf)+'" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="5 4"/>';
+  const pts=rows.map((r,i)=>x(i)+','+y(r.bal)).join(' ');
+  s+='<polygon points="'+x(0)+','+y(Math.max(mn,Math.min(0,mx)))+' '+pts+' '+x(rows.length-1)+','+y(Math.max(mn,Math.min(0,mx)))+'" fill="var(--accent)" fill-opacity=".10"/>';
+  s+='<polyline points="'+pts+'" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round"/>';
+  rows.forEach((r,i)=>{const c=r.bal<buf?'var(--neg)':'var(--accent)';s+='<circle cx="'+x(i)+'" cy="'+y(r.bal)+'" r="'+(r.bal<buf?5:3.5)+'" fill="'+c+'" stroke="var(--surface)" stroke-width="1.5"><title>'+mLabel(r.key,true)+': '+kr(r.bal)+'</title></circle><text x="'+x(i)+'" y="'+(H-12)+'" text-anchor="middle">'+MON[mNum(r.key)-1]+'</text>'});
+  return s+'</svg>';
+}
+
+/* ---------- Budget (Excel-like grid) ---------- */
+function vBudget(){
+  const cats=S.settings.cats;
+  const by=S.ui.budgetYear,ys=yearList(),own=!!(S.settings.years||{})[by],nextY=Math.max(...ys)+1;
+  let h='<div class="row spread" style="align-items:flex-end"><div><h1>Budget '+by+'</h1><p class="sub">Ét beløb pr. post og hvor tit det kommer – eller vælg “Pr. måned (manuelt)” og skriv beløbet i hver måned, som i dit regneark. Ændringer gemmes automatisk.</p></div><button class="btn" type="button" data-act="exportbudget">Gem budget som fil</button></div>';
+  h+='<div class="row yearbar"><span class="label">Budgetår</span><div class="seg">'+ys.map(y=>'<button type="button" data-act="byear" data-y="'+y+'" aria-pressed="'+(y===by)+'">'+y+(y===TODAY.getFullYear()?' <span class="muted" style="font-weight:400">· i år</span>':'')+'</button>').join('')+'</div>'+
+    '<button class="btn" type="button" data-act="newyear" data-y="'+nextY+'">＋ Lav budget '+nextY+' <span class="muted">(kopi af '+Math.max(...ys)+')</span></button>'+
+    (ys.length>1?'<span id="delyear"><button class="btn ghost" type="button" data-act="delyear1">Slet budget '+by+'</button></span>':'')+'</div>';
+  if(!own)h+='<div class="callout warn"><p>'+by+' har ikke sit eget budget endnu og viser tallene fra '+srcYear(by)+'. Retter du et beløb her, får '+by+' sit eget budget.</p></div>';
+  h+='<div class="seg acctabs" role="group" aria-label="Vis budget"><button type="button" data-act="brole" data-r="" aria-pressed="'+!bRole()+'">Hele husholdningen</button>'+ROLES.slice(0,3).map(x=>'<button type="button" data-act="brole" data-r="'+x[0]+'" aria-pressed="'+(bRole()===x[0])+'">'+x[1]+'</button>').join('')+'</div>';
+  if(bRole()){const R=roleSums(bRole(),by);h+='<div class="panel row" style="gap:16px;align-items:flex-end"><div style="flex:1 1 320px"><h2>'+ROLE(bRole())[1]+' · '+(roleAcc(bRole())?esc(accName(roleAcc(bRole()))):ROLE(bRole())[2])+'</h2><p class="sub">Kun de poster, der hører til '+ROLE(bRole())[1]+'. Nederst i tabellen ser du regnestykket: posterne i alt, '+(bRole()==='budget'?'overførslen fra Nemkontoen':'rammen fra Fordeling')+', forskellen og saldoen på kontoen, hvor overskud føres videre. Det opdateres, mens du retter.</p></div>'+
+    '<label class="field"><span class="label">Saldo på kontoen 1. januar '+by+'</span><input id="bs_start" class="num" data-pf="'+R.startKey+'" inputmode="decimal" value="'+(R.start?nf0.format(R.start):'')+'" placeholder="0"></label>'+
+    (bRole()!=='budget'?'<button class="btn" type="button" data-act="tab" data-tab="fordeling">Ret rammen under Fordeling</button>':'')+'</div><div id="rrmsg"></div>'}
+  if(!bRole()){const P=planCalc(by);const cmp=(lbl,fr,pb,cu)=>'<tr><td><b>'+lbl+'</b><br><span class="muted" style="font-size:11.5px">ramme / saldo</span></td>'+fr.map((v,i)=>{const c=cu[i];return '<td class="m has">'+nf0.format(Math.round(v))+'<br><span class="'+(c<0?'neg':'muted')+'" style="font-size:11.5px">'+(c<0?'':'✓ ')+nf0.format(Math.round(c))+'</span></td>'}).join('')+'<td class="m has"><b class="'+(cu[11]<0?'neg':'')+'">'+nf0.format(Math.round(cu[11]))+'</b></td></tr>';
+   h+='<div class="panel"><h2>Ramme fra Fordeling</h2><p class="sub">Overførslen til Mad og Diverse sætter du under <button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="fordeling">Fordeling</button>. Fordel den her på posterne. Tallet under rammen er saldoen på kontoen, når overskud føres videre fra måned til måned. ✓ = kontoen har penge nok, rødt = den går i minus den måned. Startsaldoen skriver du under Fordeling.</p>'+
+     '<div class="tablewrap" style="margin-top:10px"><table class="xfer"><thead><tr><th>Ramme</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'<th class="r">Ultimo året</th></tr></thead><tbody>'+cmp('Mad',P.mad,P.madB,P.madCum)+cmp('Diverse',P.div,P.divB,P.divCum)+'</tbody></table></div></div>'}
+  h+='<div class="tablewrap grid"><table><thead><tr><th>Post</th><th>Budget</th><th class="r">Beløb</th><th>Hyppighed</th><th>Første måned</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'<th class="r">År i alt</th><th></th></tr></thead><tbody>';
+  const totals={};
+  for(const g of grp()){
+    const rows=cats.filter(c=>c.g===g.id&&inB(c));if(bRole()&&!rows.length)continue;
+    h+='<tr class="grp"><td colspan="5">'+esc(g.name)+(g.type==='ignore'?' <span class="muted" style="font-weight:400">– fx overførsler mellem egne konti</span>':'')+'</td>'+MON.map((_,i)=>'<td class="m" data-gt="'+g.id+'-'+(i+1)+'"></td>').join('')+'<td class="m" data-gt="'+g.id+'-y"></td><td><button class="x" type="button" data-act="addcat" data-g="'+g.id+'" title="Tilføj post">＋</button></td></tr>';
+    for(const c of rows){
+      const b=budObj(c,by);
+      const gl=goalsFor(c.id);
+      const accTd=g.type!=='expense'?'<td></td>':'<td><select data-f="role" aria-label="Budget for '+esc(c.name)+'">'+ROLES.map(x=>'<option value="'+x[0]+'"'+(roleOf(c)===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></td>';
+      h+='<tr data-cat="'+c.id+'"><td><input class="name" data-f="name" value="'+esc(c.name)+'" aria-label="Navn"></td>'+accTd+
+        (g.type==='ignore'?'<td></td><td></td><td></td>':gl?'<td colspan="3" class="muted" style="font-size:13px">Styres af opsparingsmål under <button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="fordeling">Fordeling</button></td>':
+        (b.f==='m'?'<td class="m muted" style="text-align:right">pr. måned →</td>':'<td><input class="amt" data-f="amt" inputmode="decimal" value="'+(b.amt?nf0.format(b.amt):'')+'" placeholder="0" aria-label="Beløb for '+esc(c.name)+'"></td>')+
+        '<td><select data-f="f" aria-label="Hyppighed">'+FREQ.map(([v,l])=>'<option value="'+v+'"'+(String(b.f||1)===String(v)?' selected':'')+'>'+l+'</option>').join('')+'</select></td>'+
+        '<td><select data-f="s" aria-label="Første måned"'+(b.f==='m'||+b.f===1?' disabled':'')+'>'+MONL.map((l,i)=>'<option value="'+(i+1)+'"'+(+b.s===i+1?' selected':'')+'>'+l+'</option>').join('')+'</select></td>')+
+        MON.map((_,i)=>b.f==='m'&&g.type!=='ignore'&&!gl?'<td class="m mi"><input class="amt mm" data-f="mm" data-i="'+i+'" inputmode="decimal" value="'+((b.m||[])[i]?nf0.format(b.m[i]):'')+'" placeholder="0" aria-label="'+esc(c.name)+' '+MONL[i]+'" style="min-width:64px"></td>':'<td class="m" data-m="'+(i+1)+'"></td>').join('')+'<td class="m" data-m="y"></td>'+
+        '<td><button class="x" type="button" data-act="delcat" data-id="'+c.id+'" title="Slet post" aria-label="Slet '+esc(c.name)+'">✕</button></td></tr>';
+    }
+  }
+  if(bRole()){const R=roleSums(bRole(),by);const row=(k,lbl,cls)=>'<tr'+(cls?' class="'+cls+'"':'')+'><td colspan="5">'+lbl+'</td>'+MON.map((_,i)=>'<td class="m has" data-rr="'+k+'-'+(i+1)+'"></td>').join('')+'<td class="m has" data-rr="'+k+'-y"></td><td></td></tr>';
+    h+=row('posts','Posterne i alt','tot')+row('frame',esc(R.frameName))+row('diff','Forskel (ramme − poster)')+row('saldo','Saldo på kontoen ultimo (overskud føres videre)','tot')}
+  else h+='<tr class="tot"><td colspan="5">Resultat (indtægter − udgifter)</td>'+MON.map((_,i)=>'<td class="m" data-tot="'+(i+1)+'"></td>').join('')+'<td class="m" data-tot="y"></td><td></td></tr>';
+  h+='</tbody></table></div><div id="delconfirm"></div>';
+  return h;
+}
+function parseAmt(s){
+  s=String(s||'').replace(/kr\.?/gi,'').replace(/\s| /g,'').trim();if(!s)return 0;
+  let neg=false;if(/^\(.*\)$/.test(s)){neg=true;s=s.slice(1,-1)}
+  if(s.endsWith('-')){neg=true;s=s.slice(0,-1)}
+  if(s.includes(',')){s=s.replace(/\./g,'').replace(',','.')}
+  else if((s.match(/\./g)||[]).length>1||/\.\d{3}$/.test(s))s=s.replace(/\./g,'');
+  const v=parseFloat(s);if(isNaN(v))return NaN;return neg?-Math.abs(v):v;
+}
+function renderXfer(){
+  const el=document.getElementById('xfer');if(!el)return;return;
+  const rows=ROLES.map(x=>({x,m:Array(12).fill(0)}));
+  for(const c of S.settings.cats){if(G(c.g).type!=='expense')continue;const r=rows.find(o=>o.x[0]===roleOf(c));for(let m=1;m<=12;m++)r.m[m-1]+=budgetFor(c,m)}
+  const accs=accList();
+  const accSel=x=>accs.length?'<select data-role="'+x[0]+'" aria-label="Konto for '+x[1]+'" class="inp" style="padding:3px 6px"><option value="">Vælg konto</option>'+accs.map(a=>'<option value="'+esc(a.no)+'"'+(roleAcc(x[0])===a.no?' selected':'')+'>'+esc(a.name)+'</option>').join('')+'</select>':'<span class="muted">'+x[2]+'</span>';
+  el.innerHTML='<h2>Dine budgetter</h2><p class="sub">Så meget skal der overføres til hver konto hver måned i '+S.ui.budgetYear+'. Vælg i kolonnen “Budget” nedenfor, hvilket budget hver post hører til.'+(accs.length?'':' Kontiene bliver koblet på, når du har importeret en CSV-fil fra Nykredit.')+'</p>'+
+    '<div class="tablewrap" style="margin-top:12px"><table class="xfer"><thead><tr><th>Budget</th><th>Konto</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'<th class="r">Snit pr. md.</th></tr></thead><tbody>'+
+    rows.map(r=>{const sum=r.m.reduce((s,v)=>s+v,0);return '<tr><td><b>'+r.x[1]+'</b></td><td>'+accSel(r.x)+'</td>'+r.m.map(v=>'<td class="m has">'+(v?nf0.format(v):'')+'</td>').join('')+'<td class="m has"><b>'+nf0.format(Math.round(sum/12))+'</b></td></tr>'}).join('')+'</tbody></table></div>';
+  el.querySelectorAll('select[data-role]').forEach(s=>s.addEventListener('change',()=>{S.settings.roles=S.settings.roles||{};S.settings.roles[s.dataset.role]=s.value;markDirty('settings');toast('Budget '+ROLE(s.dataset.role)[1]+' er koblet til '+(s.value?accName(s.value):'ingen konto'))}));
+}
+const bRole=()=>['budget','mad','diverse'].includes(S.ui.bRole)?S.ui.bRole:'';
+const inB=c=>{const r=bRole();return !r||(G(c.g).type==='expense'&&roleOf(c)===r)};
+function roleSums(r,y){const P=planCalc(y);
+  if(r==='budget')return {posts:P.bud,frame:Array(12).fill(P.T),saldo:P.bsal,start:P.start,startKey:'start',frameName:'Overført fra Nemkonto'};
+  if(r==='mad')return {posts:P.madB,frame:P.mad,saldo:P.madCum,start:+(S.settings.plan||{}).madStart||0,startKey:'madStart',frameName:'Ramme fra Fordeling'};
+  return {posts:P.divB,frame:P.div,saldo:P.divCum,start:+(S.settings.plan||{}).divStart||0,startKey:'divStart',frameName:'Ramme fra Fordeling'}}
+function refreshBudgetNumbers(){
+  renderXfer();
+  const cats=S.settings.cats.filter(inB);const tot=Array(13).fill(0);
+  for(const c of cats){
+    const tr=document.querySelector('tr[data-cat="'+c.id+'"]');const t=G(c.g).type;let y=0;
+    for(let m=1;m<=12;m++){const v=t==='ignore'?0:budgetFor(c,m);y+=v;const td=tr&&tr.querySelector('td[data-m="'+m+'"]');if(td){td.textContent=v?nf0.format(v):'';td.classList.toggle('has',!!v)}
+      if(t==='income')tot[m]+=v;else if(t==='expense')tot[m]-=v}
+    if(tr){const td=tr.querySelector('td[data-m="y"]');td.textContent=y?nf0.format(y):'';td.classList.toggle('has',!!y)}
+  }
+  for(const g of grp()){let gy=0;for(let m=1;m<=12;m++){const v=cats.filter(c=>c.g===g.id).reduce((s,c)=>s+(g.type==='ignore'?0:budgetFor(c,m)),0);gy+=v;const td=document.querySelector('td[data-gt="'+g.id+'-'+m+'"]');if(td){td.textContent=v?nf0.format(v):'';td.classList.toggle('has',!!v)}}
+    const td=document.querySelector('td[data-gt="'+g.id+'-y"]');if(td){td.textContent=gy?nf0.format(gy):'';td.classList.toggle('has',!!gy)}}
+  let ty=0;for(let m=1;m<=12;m++){ty+=tot[m];const td=document.querySelector('td[data-tot="'+m+'"]');if(td){td.textContent=nf0.format(tot[m]);td.className='m has '+(tot[m]<0?'neg':'')}}
+  const td=document.querySelector('td[data-tot="y"]');if(td){td.textContent=nf0.format(ty);td.className='m has '+(ty<0?'neg':'')}
+  const r=bRole();if(r){const R=roleSums(r,S.ui.budgetYear);const sum=a=>a.reduce((s,v)=>s+v,0);
+    const put=(k,arr,y,neg)=>{arr.forEach((v,i)=>{const c=document.querySelector('td[data-rr="'+k+'-'+(i+1)+'"]');if(c){c.textContent=nf0.format(Math.round(v));c.className='m has '+(neg&&v<0?'neg':'')}});const c=document.querySelector('td[data-rr="'+k+'-y"]');if(c){c.textContent=y==null?'':nf0.format(Math.round(y));c.className='m has '+(neg&&y<0?'neg':'')}};
+    put('posts',R.posts,sum(R.posts));put('frame',R.frame,sum(R.frame));const d=R.frame.map((v,i)=>v-R.posts[i]);put('diff',d,sum(d),1);put('saldo',R.saldo,R.saldo[11],1);
+    const msg=document.getElementById('rrmsg');if(msg){const neg=R.saldo.map((v,i)=>v<0?MONL[i]:null).filter(Boolean);
+      msg.innerHTML=neg.length?'<div class="callout bad"><p><b>Kontoen går i minus i '+neg.join(', ')+'.</b> Posterne fylder '+kr(sum(R.posts))+' på året, rammen er '+kr(sum(R.frame))+'. '+(sum(d)<0?'Der mangler '+kr(-sum(d))+' på året: sænk posterne eller hæv rammen under Fordeling.':'Over året går det op, men pengene kommer for sent. Skriv en startsaldo eller flyt en post til en senere måned.')+'</p></div>':'<div class="callout ok"><p><b>Det går op hele året.</b> Saldo ved årets slutning: '+kr(R.saldo[11])+'</p></div>'}}
+}
+function editBud(c){const y=String(S.ui.budgetYear);const ys=S.settings.years=S.settings.years||{};const yr=ys[y]=ys[y]||{};if(!yr[c.id])yr[c.id]=clone(budObj(c,+y));return yr[c.id]}
+function bindBudget(){
+  refreshBudgetNumbers();
+  const tbl=$('#main .grid');
+  tbl.addEventListener('input',e=>{
+    const el=e.target;const tr=el.closest('tr[data-cat]');if(!tr)return;const c=catById(tr.dataset.cat);if(!c)return;
+    const f=el.dataset.f;
+    if(f==='name'){c.name=el.value;markDirty('settings');return}
+    if(f==='role'){c.r=el.value;markDirty('settings');if(bRole()){renderAll(true);toast(c.name+' er flyttet til '+ROLE(el.value)[1])}return}
+    const b=editBud(c);
+    if(f==='amt'){const v=parseAmt(el.value);b.amt=isNaN(v)?0:Math.abs(v)}
+    else if(f==='mm'){const v=parseAmt(el.value);b.m=b.m||Array(12).fill(0);b.m[+el.dataset.i]=isNaN(v)?0:Math.abs(v)}
+    else if(f==='f'){
+      if(el.value==='m'){b.m=Array.from({length:12},(_,i)=>budgetFor(c,i+1));b.f='m'}
+      else{if(b.f==='m'&&!b.amt)b.amt=Math.max(0,...(b.m||[0]));b.f=+el.value}
+      markDirty('settings');renderAll(true);return}
+    else if(f==='s')b.s=+el.value;
+    refreshBudgetNumbers();markDirty('settings');
+  });
+  tbl.addEventListener('change',e=>{if(e.target.dataset.f==='name'){renderHeader()}});
+}
+
+/* ---------- Transaktioner ---------- */
+function vTrans(){
+  const ui=S.ui;const keys=Object.keys(S.months).sort().reverse();
+  if(!keys.includes(ui.tfMonth)&&ui.tfMonth!=='alle')ui.tfMonth=keys[0]||CUR;
+  let list=ui.tfMonth==='alle'?allTx():(S.months[ui.tfMonth]||[]).slice();
+  if(ui.tfCat==='__none')list=list.filter(t=>!t.c||!catById(t.c));else if(ui.tfCat)list=list.filter(t=>t.c===ui.tfCat);
+  if(ui.tfAcc)list=list.filter(t=>t.acc===ui.tfAcc);
+  if(ui.tfQ){const q=ui.tfQ.toUpperCase();list=list.filter(t=>t.t.toUpperCase().includes(q))}
+  list.sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0);
+  const sum=list.reduce((s,t)=>s+t.a,0);const hasAcc=(S.settings.accounts||[]).length>0;
+  let h='<div><h1>Transaktioner</h1><p class="sub">Skift kategori direkte i listen. Det ændrer kun den ene linje – vil du have en fast regel, så brug Kategorisér eller fanen Regler.</p></div>';
+  h+='<div class="row"><select class="inp" id="tfMonth" aria-label="Måned"><option value="alle"'+(ui.tfMonth==='alle'?' selected':'')+'>Alle måneder</option>'+keys.map(k=>'<option value="'+k+'"'+(k===ui.tfMonth?' selected':'')+'>'+mLabel(k,true)+'</option>').join('')+'</select>'+
+    '<select class="inp" id="tfCat" aria-label="Kategori"><option value="">Alle kategorier</option><option value="__none"'+(ui.tfCat==='__none'?' selected':'')+'>Mangler kategori</option>'+catOptions(ui.tfCat)+'</select>'+
+    ((S.settings.accounts||[]).length?'<select class="inp" id="tfAcc" aria-label="Konto"><option value="">Alle konti</option>'+S.settings.accounts.map(a=>'<option value="'+esc(a.no)+'"'+(a.no===ui.tfAcc?' selected':'')+'>'+esc(a.name)+'</option>').join('')+'</select>':'')+
+    '<input class="inp" id="tfQ" type="search" placeholder="Søg i tekst" value="'+esc(ui.tfQ)+'" style="flex:1 1 180px"><span class="muted">'+list.length+' linjer · <span class="num">'+kr2(sum)+'</span> kr.</span></div>';
+  if(!list.length)return h+'<div class="panel empty">Ingen transaktioner her. Importér en fil fra Nykredit under fanen Import.</div>';
+  h+='<div class="tablewrap"><table class="txt"><thead><tr><th>Dato</th>'+(hasAcc?'<th>Konto</th>':'')+'<th>Tekst</th><th>Kategori</th><th class="r">Beløb</th></tr></thead><tbody>';
+  for(const t of list.slice(0,600))h+='<tr><td class="num td-d" style="font-size:13px">'+t.d.split('-').reverse().join('-')+'</td>'+(hasAcc?'<td class="td-acc" style="font-size:13px;white-space:nowrap">'+esc(accName(t.acc))+'</td>':'')+'<td class="td-t" style="min-width:220px"'+(t.t2?' title="'+esc(t.t2)+'"':'')+'>'+esc(t.t)+(t.t2?'<div class="muted" style="font-size:12px">'+esc(t.t2.slice(0,60))+'</div>':'')+(t.x?' <span class="pill info" title="Overførsel mellem dine egne konti">intern</span>':t.auto?' <span class="pill info" title="Lagt automatisk af en regel">auto</span>':'')+'</td><td class="td-c"><select class="inp" data-tx="'+t.id+'" data-k="'+t.d.slice(0,7)+'" style="padding:4px 6px;'+(!t.c?'border-color:var(--warn)':'')+'"><option value="">– vælg –</option>'+catOptions(t.c)+'</select></td><td class="r num td-a '+(t.a<0?'':'pos')+'">'+kr2(t.a)+'</td></tr>';
+  h+='</tbody></table></div>'+(list.length>600?'<p class="muted">Viser de første 600. Brug filtrene for at se resten.</p>':'');
+  return h;
+}
+function catOptions(sel){return grp().map(g=>'<optgroup label="'+esc(g.name)+'">'+S.settings.cats.filter(c=>c.g===g.id).map(c=>'<option value="'+c.id+'"'+(c.id===sel?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</optgroup>').join('')}
+
+/* ---------- Regler ---------- */
+function vRegler(){
+  const st=S.settings;const txs=allTx().map(t=>[hay(t),t.t2?' '+normFull(t.t2).replace(/ /g,'')+' ':'',t.a]);
+  const hits=r=>txs.filter(([f,f2,a])=>ruleHits(f,r.k)&&amtOk(r,a)&&(!r.k2||f2.includes(r.k2.replace(/ /g,'')))).length;
+  const used={};for(const t of allTx())if(t.c)used[t.c]=(used[t.c]||0)+1;
+  const gopts=sel=>grp().map(g=>'<option value="'+g.id+'"'+(g.id===sel?' selected':'')+'>'+esc(g.name)+'</option>').join('');
+  let h='<div class="row spread"><div><h1>Kategorier og regler</h1><p class="sub">Her opretter, omdøber, flytter og sletter du kategorier og områder. Ordene til højre er dem, Budget leder efter i bankteksten. Skifter I udbyder, retter du ordet – ikke kategorien.</p></div><div class="row"><button class="btn" type="button" data-act="addgroup">＋ Nyt område</button><button class="btn" type="button" data-act="rerun">Kør regler på alt ukategoriseret</button></div></div>';
+  for(const g of grp()){
+    const cs=st.cats.filter(c=>c.g===g.id);
+    h+='<section class="panel rulegrp"><div class="row spread"><input class="inp gname" data-gname="'+esc(g.id)+'" value="'+esc(g.name)+'" aria-label="Navn på område"><div class="row" style="gap:6px"><button class="btn" type="button" data-act="addcat" data-g="'+g.id+'">＋ Ny kategori</button>'+(!cs.length&&g.type==='expense'?'<button class="btn ghost" type="button" data-act="delgroup" data-g="'+g.id+'">Slet område</button>':'')+'</div></div>';
+    if(!cs.length)h+='<p class="muted" style="margin:6px 0 0">Ingen kategorier endnu.</p>';
+    for(const c of cs){
+      const rs=st.rules.map((r,i)=>({r,i})).filter(x=>x.r.c===c.id);const fixed=c.id==='overforsel';
+      h+='<div class="rulerow" data-cat="'+esc(c.id)+'"><div class="rleft"><input class="inp rname" data-catname="'+esc(c.id)+'" value="'+esc(c.name)+'" aria-label="Navn på kategori"><span class="muted rmeta">'+(used[c.id]||0)+' trans.</span></div><div class="chips">'+
+        rs.map(({r,i})=>'<span class="rchip" title="'+hits(r)+' transaktioner"><span class="num">'+esc(r.k)+(r.k2?' <span class="muted">+ '+esc(r.k2)+'</span>':'')+(r.a!=null?' <span class="muted">= '+fmtAmt(r.a)+' kr.</span>':'')+'</span><button type="button" class="x" data-act="delrule" data-i="'+i+'" aria-label="Fjern '+esc(r.k)+'">✕</button></span>').join('')+
+        '<input class="inp addrule" data-addrule="'+esc(c.id)+'" placeholder="+ tilføj ord" title="Skriv et ord og tryk Enter. Kun et bestemt beløb: APPLE = 209" aria-label="Tilføj genkendelsesord til '+esc(c.name)+'"></div>'+
+        (fixed?'<div></div>':'<div class="row ract"><select class="inp" data-catgroup="'+esc(c.id)+'" aria-label="Flyt til område" style="padding:4px 6px">'+gopts(c.g)+'</select><button class="x" type="button" data-act="delcat" data-id="'+esc(c.id)+'" aria-label="Slet '+esc(c.name)+'" title="Slet kategori">✕</button></div>')+
+        '<div class="rconfirm" id="delconfirm-'+esc(c.id)+'"></div></div>';
+    }
+    h+='</section>';
+  }
+  return h+'<div id="delconfirm"></div>';
+}
+
+/* ---------- Import ---------- */
+let pending=null,pendingTpl=null;
+function vImport(){
+  let h='<div><h1>Importér fra Nykredit</h1><p class="sub">Eksportér gerne alle konti på én gang som CSV fra netbanken og træk filen herind. Budget finder selv dine konti og overførslerne mellem dem. Dubletter springes over, så du trygt kan importere overlappende perioder.</p></div>';
+  h+='<div class="callout warn mobonly"><p>Import af bankfiler gør du nemmest på pc’en. Alt, du importerer dér, kan du se og rette her på telefonen.</p></div>';
+  h+='<label class="drop" id="drop"><b>Træk din CSV-fil herind</b><span class="muted">eller klik for at vælge fil · en budgetfil eller fuld backup (.json) kan også trækkes ind her</span><input type="file" id="file" accept=".csv,.txt,.json,text/csv,application/json" hidden></label>';
+  h+='<div id="mapArea"></div>';
+  h+='<div class="panel row spread"><div><h2>Eksportér til Excel</h2><p class="sub">Alle transaktioner med kategori som CSV, klar til en pivottabel.</p></div><button class="btn" type="button" data-act="export"'+(allTx().length?'':' disabled')+'>Gem CSV-fil</button></div>';
+  h+='<div class="panel row spread"><div><h2>Konto og backup</h2><p class="sub">Logget ind som <b>'+esc(Store.email||'')+'</b>. Dine data gemmes automatisk i din egen database og kan åbnes på både pc og telefon. Har du en backup fra den gamle fil, så træk den ind i feltet ovenfor. Du kan også hente en kopi.</p></div><div class="row"><button class="btn" type="button" data-act="exportall"'+(S.demo?' disabled':'')+'>Hent kopi</button><button class="btn ghost" type="button" data-act="logout">Log ud</button></div></div>';
+  if(!S.demo)h+='<div class="panel row spread"><div><h2>Start forfra</h2><p class="sub">Sletter alle transaktioner, budget og regler.</p></div><div id="wipeArea"><button class="btn danger" type="button" data-act="wipe1">Slet alle data</button></div></div>';
+  return h;
+}
+function bindImport(){
+  const drop=$('#drop'),file=$('#file');
+  file.addEventListener('change',()=>{if(file.files[0])readFile(file.files[0])});
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+  drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)readFile(f)});
+  if(pending)renderMap();
+}
+function readFile(f){
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const buf=fr.result;let text;
+    try{text=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){text=new TextDecoder('windows-1252').decode(buf)}
+    text=text.replace(/^\uFEFF/,'');
+    if(/\.json$/i.test(f.name)||/^\s*\{/.test(text)){let tpl=null;try{tpl=JSON.parse(text)}catch(e){}
+      if(tpl&&tpl.kassebog==='backup'&&tpl.settings&&Array.isArray(tpl.settings.cats)){pendingBak=tpl;renderBakConfirm();return}
+      if(!tpl||tpl.kassebog!=='budget'||!Array.isArray(tpl.cats)){$('#mapArea').innerHTML='<div class="callout bad"><p>Filen er ikke en budgetfil til Budget.</p></div>';return}
+      pendingTpl=tpl;renderTplConfirm();return}
+    const rows=parseCSV(text).filter(r=>r.some(c=>c.trim()));
+    if(rows.length<1){$('#mapArea').innerHTML='<div class="callout bad"><p>Filen ser tom ud. Tjek at det er en CSV-eksport af kontobevægelser.</p></div>';return}
+    pending={name:f.name,rows,map:guessMap(rows)};renderMap();
+  };
+  fr.readAsArrayBuffer(f);
+}
+function parseCSV(text){
+  const head=text.split(/\r?\n/).slice(0,6).join('\n');
+  const cnt=d=>head.split(d).length-1;const delim=[';','\t',','].sort((a,b)=>cnt(b)-cnt(a))[0];
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===delim){row.push(cur);cur=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);rows.push(row);row=[];cur=''}
+    else cur+=ch}
+  if(cur||row.length){row.push(cur);rows.push(row)}
+  return rows.map(r=>r.map(c=>c.trim()));
+}
+function parseDate(s){
+  s=String(s||'').trim();let m;
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)))return m[1]+'-'+pad(m[2])+'-'+pad(m[3]);
+  if((m=s.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{2,4})/))){let y=+m[3];if(y<100)y+=2000;if(+m[2]>12)return null;return y+'-'+pad(m[2])+'-'+pad(m[1])}
+  return null;
+}
+function guessMap(rows){
+  const h=rows[0].map(c=>c.toLowerCase());
+  const find=keys=>{for(const k of keys){const i=h.findIndex(x=>x.includes(k));if(i>=0)return i}return -1};
+  let map={header:false,date:-1,text:-1,amt:-1,saldo:-1,acc:-1,from:-1,to:-1,t2:-1};
+  const hasHeader=!rows[0].some(c=>parseDate(c));
+  if(hasHeader){map.header=true;map.date=find(['bogført','bogfort','bogføringsdato','dato','date','rentedato']);map.text=find(['tekst','beskrivelse','posteringstekst','text','description']);map.amt=find(['beløb','belob','amount','bevægelse']);map.saldo=find(['saldo','balance']);
+    map.acc=find(['exportkonto','kontonummer','konto nr','kontonr']);map.t2=find(['supp. tekst','supp tekst','tekst til modtager','posteringsdetaljer']);map.from=find(['afsenderkonto','fra konto']);map.to=find(['modtagerkonto','til konto'])}
+  const data=rows.slice(map.header?1:0,map.header?21:20);const n=rows[0].length;
+  const score=(i,fn)=>data.filter(r=>fn(r[i])).length;
+  if(map.date<0){for(let i=0;i<n;i++)if(score(i,parseDate)>data.length*.6){map.date=i;break}}
+  const numeric=[];for(let i=0;i<n;i++)if(i!==map.date&&score(i,v=>v&&!isNaN(parseAmt(v))&&/\d/.test(v)&&!parseDate(v))>data.length*.6)numeric.push(i);
+  if(map.amt<0)map.amt=numeric.find(i=>score(i,v=>parseAmt(v)<0)>0)??numeric[0]??-1;
+  if(map.saldo<0&&map.header)map.saldo=-1;
+  if(map.text<0){let best=-1,bl=0;for(let i=0;i<n;i++){if(i===map.date||numeric.includes(i))continue;const l=data.reduce((s,r)=>s+(r[i]||'').length,0);if(l>bl){bl=l;best=i}}map.text=best}
+  return map;
+}
+function renderMap(){
+  const p=pending;const area=$('#mapArea');if(!area)return;const rows=p.rows;const n=Math.max(...rows.slice(0,10).map(r=>r.length));
+  const colName=i=>p.map.header?(rows[0][i]||'Kolonne '+(i+1)):'Kolonne '+(i+1);
+  const sel=(id,v,opt)=>'<select class="inp" id="'+id+'">'+(opt?'<option value="-1">(ingen)</option>':'')+Array.from({length:n},(_,i)=>'<option value="'+i+'"'+(i===v?' selected':'')+'>'+esc(colName(i))+'</option>').join('')+'</select>';
+  const body=rows.slice(p.map.header?1:0);const parsed=buildTx(p);
+  let h='<div class="panel" style="display:flex;flex-direction:column;gap:14px"><div class="row spread"><h2>'+esc(p.name)+'</h2><span class="muted">'+body.length+' rækker fundet</span></div>';
+  h+='<div class="row" style="align-items:flex-end"><label class="field"><span class="label">Dato</span>'+sel('mDate',p.map.date)+'</label><label class="field"><span class="label">Tekst</span>'+sel('mText',p.map.text)+'</label><label class="field"><span class="label">Beløb</span>'+sel('mAmt',p.map.amt)+'</label><label class="field"><span class="label">Saldo</span>'+sel('mSaldo',p.map.saldo,true)+'</label>'+
+    '<label class="field"><span class="label">Ekstra tekst</span>'+sel('mT2',p.map.t2,true)+'</label><label class="field"><span class="label">Konto</span>'+sel('mAcc',p.map.acc,true)+'</label><label class="field"><span class="label">Afsenderkonto</span>'+sel('mFrom',p.map.from,true)+'</label><label class="field"><span class="label">Modtagerkonto</span>'+sel('mTo',p.map.to,true)+'</label>'+
+    '<label class="row" style="gap:6px"><input type="checkbox" id="mHeader"'+(p.map.header?' checked':'')+'> Første række er overskrifter</label></div>';
+  const accs=[...new Set(parsed.ok.map(t=>t.acc).filter(Boolean))];
+  if(accs.length)h+='<p class="muted" style="margin:0">'+accs.length+' konti i filen: '+accs.map(a=>esc(accName(a))).join(', ')+'. Overførsler mellem dem bliver genkendt og tæller ikke med i budgettet.</p>';
+  h+='<div class="tablewrap"><table><thead><tr><th>Dato</th>'+(accs.length?'<th>Konto</th>':'')+'<th>Tekst</th><th class="r">Beløb</th><th>Kategori</th></tr></thead><tbody>'+parsed.ok.slice(0,6).map(t=>{const r=findRule(t.t,t.t2,t.a);return '<tr><td class="num">'+t.d+'</td>'+(accs.length?'<td class="num">'+esc(accName(t.acc))+'</td>':'')+'<td>'+esc(t.t)+'</td><td class="r num">'+kr2(t.a)+'</td><td>'+(r?esc(catById(r.c)?.name||''):'<span class="muted">vælges bagefter</span>')+'</td></tr>'}).join('')+'</tbody></table></div>';
+  if(parsed.bad)h+='<p class="muted">'+parsed.bad+' rækker kunne ikke læses (mangler dato eller beløb) og springes over.</p>';
+  h+='<div class="row"><button class="btn primary" type="button" data-act="doimport"'+(parsed.ok.length?'':' disabled')+'>Importér '+parsed.ok.length+' transaktioner</button><button class="btn ghost" type="button" data-act="cancelimport">Annullér</button></div></div>';
+  area.innerHTML=h;
+  const MK={mDate:'date',mText:'text',mAmt:'amt',mSaldo:'saldo',mAcc:'acc',mFrom:'from',mTo:'to',mT2:'t2'};
+  Object.keys(MK).forEach(id=>$('#'+id).addEventListener('change',e=>{p.map[MK[id]]=+e.target.value;renderMap()}));
+  $('#mHeader').addEventListener('change',e=>{p.map.header=e.target.checked;renderMap()});
+}
+function buildTx(p){
+  const m=p.map;const body=p.rows.slice(m.header?1:0);const ok=[];let bad=0;const seen={};
+  const col=i=>i>=0?(r=>(r[i]||'').replace(/\s+/g,'')):(()=>'');
+  const fAcc=col(m.acc),fFrom=col(m.from),fTo=col(m.to);
+  body.forEach((r,o)=>{const d=parseDate(r[m.date]);const a=parseAmt(r[m.amt]);const t=(r[m.text]||'').replace(/\s+/g,' ').trim();
+    if(!d||isNaN(a)||m.amt<0){bad++;return}
+    const acc=fAcc(r);
+    const base=(acc?acc+'|':'')+d+'|'+a+'|'+t;seen[base]=(seen[base]||0)+1;
+    const tx={id:hash(base+'#'+seen[base]),d,t,a,o};
+    if(acc)tx.acc=acc;
+    const fr=fFrom(r),to=fTo(r);if(fr)tx.from=fr;if(to)tx.to=to;
+    if(m.t2>=0){const raw=r[m.t2]||'';
+      if(/^Forretning/i.test(t)){const mm=raw.match(/Øvrig info:\s*(.*)$/i);if(mm){const parts=mm[1].split(/\s{2,}:\s*/);
+        const p1=(parts[1]||'').trim();const code=!p1||/\d/.test(p1.split(' ')[0])||/wallet|kurstill/i.test(p1);
+        if(parts.length>=3&&!code){const v=parts[0].replace(/\s+/g,' ').trim();if(v&&!/wallet|visa|nota/i.test(v)&&!normFull(t).includes(normFull(v)))tx.t2=v.slice(0,60)}}}
+      else if(!/^(DK-NOTA|Debit)/i.test(t)){const t2=raw.replace(/\s+/g,' ').trim().slice(0,110);if(t2&&t2.toUpperCase()!==t.toUpperCase())tx.t2=t2}}
+    if(m.saldo>=0){const s=parseAmt(r[m.saldo]);if(!isNaN(s))tx.s=s}
+    ok.push(tx)});
+  return {ok,bad};
+}
+function doImport(){
+  if(!pending)return;const {ok}=buildTx(pending);
+  if(S.demo){S.demo=false;S.settings=defaultSettings(false);S.months={};markDirty('settings')}
+  migrate(S.settings);
+  const existing=allTx();const have=new Map(existing.map(t=>[t.id,t]));const fresh=[];let enriched=0,reRuled=0;
+  for(const t of ok){const ex=have.get(t.id);
+    if(ex){if(t.t2&&ex.t2!==t.t2){ex.t2=t.t2;enriched++;markMonth(ex.d.slice(0,7));
+      if(!ex.x&&(!ex.c||!catById(ex.c)||ex.auto)){const r=findRule(ex.t,ex.t2,ex.a);if(r&&r.c!==ex.c){ex.c=r.c;ex.auto=true;reRuled++}}}continue}
+    have.set(t.id,t);fresh.push(t)}
+  const internal=detectInternal(fresh,existing);
+  const names=suggestAccNames(fresh);let newAcc=0;
+  for(const no of new Set(fresh.map(t=>t.acc).filter(Boolean))){
+    if(!S.settings.accounts.some(a=>a.no===no)){S.settings.accounts.push({no,name:names[no]||('Konto …'+no.slice(-4)),liq:true});newAcc++}}
+  if(newAcc){fixAccounts(S.settings);markDirty('settings')}
+  let auto=0;const touched=new Set();
+  for(const t of fresh){
+    if(t.x){t.c='overforsel';t.auto=true}
+    else{const r=findRule(t.t,t.t2,t.a);if(r){t.c=r.c;t.auto=true;auto++}else t.c=null}
+    delete t.from;delete t.to;
+    const k=t.d.slice(0,7);(S.months[k]=S.months[k]||[]).push(t);touched.add(k)}
+  repairOutside();
+  touched.forEach(k=>{S.months[k].sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:((a.acc||'')<(b.acc||'')?-1:(a.acc||'')>(b.acc||'')?1:(a.o||0)-(b.o||0)));markMonth(k)});
+  if(!S.settings.accounts.length){const ls=latestSaldo();if(ls&&(!S.settings.startDate||ls.d>=S.settings.startDate)){S.settings.startBal=ls.s;S.settings.startDate=ls.d;markDirty('settings')}}
+  const added=fresh.length,dup=ok.length-added,miss=added-auto-internal;pending=null;
+  const last=[...touched].sort().pop();if(last){S.ui.month=last;S.ui.tfMonth=last}
+  renderAll();
+  const ma=$('#mapArea');if(ma)ma.innerHTML='<div class="callout ok"><p><b>'+added+' nye transaktioner importeret'+(newAcc?' fra '+newAcc+' konti':'')+'.</b> '+(internal?internal+' er overførsler mellem dine egne konti og tæller ikke med. ':'')+auto+' blev genkendt af regler'+(dup?', '+dup+' dubletter sprunget over':'')+'. '+(enriched?enriched+' eksisterende fik ekstra tekst fra banken'+(reRuled?', heraf fik '+reRuled+' en kategori':'')+'. ':'')+(miss?miss+' mangler kategori.':'')+(newAcc?' Tjek kontonavnene under Likviditet.':'')+'</p></div>';
+  if(miss>0)openKat();
+}
+function renderTplConfirm(){
+  const t=pendingTpl,a=$('#mapArea');if(!a||!t)return;
+  const gs=t.groups||[];const n=t.cats.length;
+  let h='<div class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>'+esc(t.name||'Budgetfil')+'</h2><p class="sub" style="margin:0">'+gs.length+' områder · '+n+' poster · '+(t.rules||[]).length+' regler. Dine kategorier, budgetbeløb og regler bliver erstattet. Transaktioner, konti og saldi beholdes, og alle transaktioner sorteres igen efter de nye regler. Det du selv har valgt, beholdes hvor kategorien findes i det nye budget.</p>';
+  h+='<div class="row" style="gap:6px">'+gs.map(g=>'<span class="pill info">'+esc(g.name)+' · '+t.cats.filter(c=>c.g===g.id).length+'</span>').join('')+'</div>';
+  h+='<div class="row"><button class="btn primary" type="button" data-act="applytpl">Brug dette budget</button><button class="btn ghost" type="button" data-act="canceltpl">Annullér</button></div></div>';
+  a.innerHTML=h;
+}
+function applyTemplate(){
+  const tpl=pendingTpl;if(!tpl)return;pendingTpl=null;
+  if(S.demo){S.demo=false;S.settings=defaultSettings(false);S.months={}}
+  const st=S.settings;st.groups=clone(tpl.groups||DEFAULT_GROUPS);st.cats=clone(tpl.cats);st.rules=clone(tpl.rules||[]);
+  if(tpl.years&&Object.keys(tpl.years).length)st.years=clone(tpl.years);else{const yr={};for(const c of st.cats)yr[c.id]=clone(c.b||{amt:0,f:1,s:1});st.years={[String(S.ui.budgetYear)]:yr}}
+  for(const a of (tpl.accounts||[])){const ex=st.accounts.find(x=>x.no===a.no);if(ex)ex.name=a.name;else st.accounts.push(clone(a))}
+  if(tpl.roles)st.roles=clone(tpl.roles);if(tpl.goals)st.goals=clone(tpl.goals);if(tpl.plan)st.plan=clone(tpl.plan);
+  delete st.bankAdded;migrate(st);
+  const map=tpl.map||{};let re=0,kept=0,open=0;
+  for(const k in S.months){for(const t of S.months[k]){
+    if(t.x){t.c='overforsel';t.auto=true;continue}
+    if(t.c&&!t.auto&&catById(t.c)){kept++;continue}
+    if(t.c&&!t.auto&&map[t.c]&&catById(map[t.c])){t.c=map[t.c];kept++;continue}
+    const r=findRule(t.t,t.t2,t.a);if(r){t.c=r.c;t.auto=true;re++}else{t.c=null;t.auto=false;open++}}
+    markMonth(k)}
+  markDirty('settings');S.ui.tab='budget';renderAll();
+  toast('Budgettet er indlæst · '+re+' transaktioner sorteret af regler'+(kept?', '+kept+' egne valg beholdt':'')+(open?', '+open+' mangler kategori':''));
+}
+function exportBudget(){
+  const st=S.settings;const by=S.ui.budgetYear;const cats=st.cats.map(c=>({...c,b:clone(budObj(c,by))}));const data=JSON.stringify({kassebog:'budget',v:1,name:'Budget '+by,groups:st.groups,cats,rules:st.rules,years:st.years,accounts:st.accounts||[],roles:st.roles||{},goals:st.goals||[],plan:st.plan||{}},null,1);
+  saveFile('budget.json',data,'application/json');
+}
+/* Fuld backup: indstillinger + alle måneder. Bruges til at flytte data fra den lokale fil (denne browser) til online-versionen, som også virker på telefonen. */
+async function saveFile(filename,data,mime){
+  try{const blob=new Blob([data],{type:mime||'application/octet-stream'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast('Filen er gemt i mappen Overførsler')}catch(e){toast('Filen blev ikke gemt')}
+}
+function exportAll(){
+  const n=allTx().length;const d=new Date();const stamp=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  const data=JSON.stringify({kassebog:'backup',v:1,saved:d.toISOString(),settings:S.settings,months:S.months});
+  saveFile('budget-backup-'+stamp+'.json',data,'application/json');
+  if(!n)toast('Bemærk: der er ingen transaktioner i backuppen');
+}
+let pendingBak=null;
+function renderBakConfirm(){
+  const b=pendingBak,a=$('#mapArea');if(!a||!b)return;
+  const ms=Object.keys(b.months||{}).sort();const n=ms.reduce((s,k)=>s+(b.months[k]||[]).length,0);
+  const st=b.settings||{};
+  a.innerHTML='<div class="panel" style="display:flex;flex-direction:column;gap:12px"><h2>Fuld backup'+(b.saved?' fra '+esc(new Date(b.saved).toLocaleString('da-DK')):'')+'</h2>'+
+    '<p class="sub" style="margin:0"><b>'+n+' transaktioner</b>'+(ms.length?' fra '+mLabel(ms[0])+' til '+mLabel(ms[ms.length-1]):'')+' · '+(st.cats||[]).length+' poster · '+(st.rules||[]).length+' regler · '+(st.accounts||[]).length+' konti.</p>'+
+    '<div class="callout warn"><p>Alt, der ligger her nu ('+allTx().length+' transaktioner), bliver <b>erstattet</b> af backuppen.</p></div>'+
+    '<div class="row"><button class="btn primary" type="button" data-act="applybak">Indlæs backup</button><button class="btn ghost" type="button" data-act="cancelbak">Annullér</button></div></div>';
+}
+function applyBackup(){
+  const b=pendingBak;if(!b)return;pendingBak=null;
+  const old=Object.keys(S.months);
+  S.demo=false;S.settings=migrate(clone(b.settings));S.months=clone(b.months||{});S._repaired=0;
+  markDirty('settings');for(const k of new Set([...old,...Object.keys(S.months)]))markMonth(k);
+  S.ui.tab='oversigt';renderAll();
+  toast('Backuppen er indlæst · '+allTx().length+' transaktioner'+(Store.mode==='db'?' gemmes nu online':''));
+}
+function exportCSV(){
+  const rows=[['Dato','Tekst','Beløb','Kategori','Gruppe']];
+  allTx().sort((a,b)=>a.d<b.d?-1:1).forEach(t=>{const c=catById(t.c);rows.push([t.d.split('-').reverse().join('-'),t.t,kr2(t.a),c?c.name:'',c?G(c.g).name:''])});
+  const csv='﻿'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  saveFile('budget-transaktioner.csv',csv,'text/csv');
+}
+async function wipe(){
+  const ids=['settings',...Object.keys(S.months).map(k=>'m-'+k)];
+  for(const id of ids){try{await Store.sb.from('budget_docs').delete().eq('id',id)}catch(e){}}
+  Store.dirty.clear();S.loaded=false;loadDemo();S.loaded=true;lastRemote='';savedStatus();S.ui.tab='oversigt';renderAll();toast('Alle data er slettet');
+}
+
+/* ---------- Categorize pop-up ---------- */
+const K={queue:[],idx:0,undo:[],done:0};
+function openKat(){
+  K.queue=inbox().map(t=>t.id);K.idx=0;K.done=0;
+  const m=$('#modal');m.hidden=false;document.body.style.overflow='hidden';renderCard(true);
+}
+function closeKat(){$('#modal').hidden=true;document.body.style.overflow='';renderAll(true)}
+function txById(id){for(const k in S.months){const t=S.months[k].find(x=>x.id===id);if(t)return t}return null}
+function currentTx(){while(K.idx<K.queue.length){const t=txById(K.queue[K.idx]);if(t&&(!t.c||!catById(t.c)))return t;K.idx++}return null}
+function usage(){const n={};for(const t of allTx())if(t.c)n[t.c]=(n[t.c]||0)+1;return n}
+function renderCard(anim){
+  const m=$('#modal');const t=currentTx();const left=inbox().length;
+  if(!t){
+    m.innerHTML='<div class="dialog"><div class="dhead"><span class="progress">Kategorisér</span><button class="btn" type="button" data-act="closekat">Luk</button></div><div class="card"><div class="done"><div class="big">✓</div><h2>Alt er kategoriseret</h2><p class="muted">'+(K.done?'Du klarede '+K.done+' transaktioner. ':'')+'Oversigten og likviditeten er opdateret.</p><div class="row">'+(K.undo.length?'<button class="btn" type="button" data-act="undo">Fortryd sidste</button>':'')+'<button class="btn primary" type="button" data-act="closekat">Se oversigten</button></div></div></div></div>';
+    return;
+  }
+  const inc=t.a>0;const key=suggestKey(isCard(t)?t.t+' '+t.t2:t.t);const use=usage();
+  const ordered=grp().slice().sort((a,b)=>{const ai=a.type==='income'?(inc?-1:1):0,bi=b.type==='income'?(inc?-1:1):0;return ai-bi});
+  const top=S.settings.cats.filter(c=>use[c.id]&&(G(c.g).type==='income')===inc).sort((a,b)=>use[b.id]-use[a.id]).slice(0,6);
+  let h='<div class="dialog"><div class="dhead"><span class="progress"><b>'+left+'</b> tilbage</span><div class="row" style="gap:6px">'+(K.undo.length?'<button class="btn" type="button" data-act="undo">↶ Fortryd</button>':'')+'<button class="btn" type="button" data-act="closekat">Luk <span class="kbd" style="color:#fff;border-color:rgba(255,255,255,.4)">Esc</span></button></div></div>';
+  h+='<div class="stack'+(left<2?' single':'')+'"><div class="card'+(anim?' in':'')+'" id="card">';
+  h+='<div class="ctop"><div style="min-width:0"><div class="label">'+dayLabel(t.d)+'</div><div class="merchant">'+esc(isCard(t)?merchantName(t.t+' '+t.t2):merchantName(t.t))+'</div><div class="raw">'+esc(t.t)+'</div>'+(t.t2?'<div class="raw" style="margin-top:2px">'+esc(t.t2)+'</div>':'')+'</div><div class="amount '+(inc?'pos':'')+'">'+(inc?'+':'')+kr2(t.a)+'<div class="label" style="text-align:inherit">kr.</div></div></div>';
+  h+='<input class="search" id="kq" type="search" placeholder="Skriv for at finde kategori – Enter vælger den første" autocomplete="off" aria-label="Find kategori">';
+  h+='<div class="picker" id="picker">';
+  if(top.length)h+='<div class="pg"><span class="label">Mest brugt</span><div class="chips">'+top.map(c=>'<button class="chip" type="button" data-pick="'+c.id+'">'+esc(c.name)+'</button>').join('')+'</div></div>';
+  for(const g of ordered){const cs=S.settings.cats.filter(c=>c.g===g.id);if(!cs.length)continue;
+    h+='<div class="pg" data-g="'+g.id+'"><span class="label">'+esc(g.name)+'</span><div class="chips">'+cs.map(c=>'<button class="chip" type="button" data-pick="'+c.id+'" data-name="'+esc(c.name.toLowerCase())+'">'+esc(c.name)+'</button>').join('')+'</div></div>'}
+  h+='</div>';
+  h+='<div class="learn"><label class="row" style="gap:6px"><input type="checkbox" id="kRemember" checked> Husk fremover for tekst med</label><input type="text" id="kKey" value="'+esc(key)+'" aria-label="Genkendelsesord"><label class="row" style="gap:6px"><input type="checkbox" id="kAmt"'+(amtSuggest(t,key)?' checked':'')+'> kun når beløbet er '+fmtAmt(Math.abs(t.a))+' kr.</label><span class="muted" id="kHits"></span></div>';
+  h+='<div class="cfoot"><button class="btn ghost" type="button" data-act="skip">Spring over</button><span class="muted" style="font-size:13px">Tip: skriv fx <span class="kbd">mad</span> og tryk <span class="kbd">Enter</span></span></div>';
+  h+='</div></div></div>';
+  m.innerHTML=h;
+  const q=$('#kq');if(!matchMedia('(pointer:coarse)').matches)setTimeout(()=>q.focus(),30);
+  q.addEventListener('input',filterPicker);
+  q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const f=$('#picker .chip.first')||$('#picker .pg[data-g] .chip:not([hidden])');if(f)pick(f.dataset.pick)}});
+  const kk=$('#kKey');kk.addEventListener('input',updateHits);$('#kAmt').addEventListener('change',updateHits);updateHits();
+}
+/* Shared billers (Apple, Google, PayPal …) carry many different subscriptions: suggest an amount rule there,
+   or when this word already has a rule that points somewhere else. */
+const SHARED=['APPLE','GOOGLE','PAYPAL','AMAZON','MOBILEPAY','VIPPS','KLARNA','STEAM','PLAYSTATION','MICROSOFT'];
+function amtSuggest(t,key){const k=normFull(key);return SHARED.some(w=>k.includes(w))||S.settings.rules.some(r=>r.k===k&&r.a!=null)}
+function updateHits(){
+  const k=normFull($('#kKey').value);const el=$('#kHits');if(!el)return;const t=currentTx();const useA=$('#kAmt')&&$('#kAmt').checked&&t;
+  const n=inbox().filter(o=>ruleHits(hay(o),k)&&(!useA||Math.abs(Math.abs(o.a)-Math.abs(t.a))<0.5)).length;
+  el.textContent=k?(n>1?'– rammer også '+(n-1)+' andre ukategoriserede':''):'';
+}
+function filterPicker(){
+  const q=$('#kq').value.trim().toLowerCase();let first=null;
+  document.querySelectorAll('#picker .pg').forEach(pg=>{
+    const gName=(G(pg.dataset.g||'').name||'').toLowerCase();let any=false;
+    if(!pg.dataset.g){pg.hidden=!!q;return}
+    pg.querySelectorAll('.chip').forEach(ch=>{const show=!q||ch.dataset.name.includes(q)||gName.includes(q);ch.hidden=!show;ch.classList.remove('first');if(show){any=true;if(q&&!first)first=ch}});
+    pg.hidden=!any});
+  if(first)first.classList.add('first');
+}
+function pick(catId){
+  const t=currentTx();if(!t)return;
+  const remember=$('#kRemember').checked;const key=normFull($('#kKey').value);const ra=$('#kAmt')&&$('#kAmt').checked?Math.round(Math.abs(t.a)*100)/100:null;
+  const ch=[{id:t.id,prev:t.c||null,prevAuto:!!t.auto}];t.c=catId;t.auto=false;
+  const months=new Set([t.d.slice(0,7)]);let rule=null,others=0;
+  if(remember&&key){
+    const ex=S.settings.rules.find(r=>r.k===key&&!r.k2&&(r.a==null?ra==null:r.a===ra));rule={k:key,a:ra,prev:ex?ex.c:null};
+    if(ex)ex.c=catId;else{const nr={k:key,c:catId};if(ra!=null)nr.a=ra;S.settings.rules.push(nr)}markDirty('settings');
+    for(const o of allTx()){if(o!==t&&(!o.c||!catById(o.c))&&ruleHits(hay(o),key)&&amtOk({a:ra},o.a)){ch.push({id:o.id,prev:o.c||null,prevAuto:!!o.auto});o.c=catId;o.auto=true;months.add(o.d.slice(0,7));others++}}
+  }
+  months.forEach(markMonth);
+  K.undo.push({ch,rule,months:[...months]});K.done++;
+  if(others)toast(others+' andre med “'+key+'”'+(ra!=null?' på '+fmtAmt(ra)+' kr.':'')+' er også lagt i '+catById(catId).name);
+  renderHeader();
+  const card=$('#card');
+  if(card&&!matchMedia('(prefers-reduced-motion: reduce)').matches){card.classList.remove('in');card.classList.add('out');setTimeout(()=>renderCard(true),200)}else renderCard(true);
+}
+function undo(){
+  const u=K.undo.pop();if(!u)return;
+  for(const c of u.ch){const t=txById(c.id);if(t){t.c=c.prev;t.auto=c.prevAuto}}
+  if(u.rule){const same=x=>x.k===u.rule.k&&!x.k2&&(x.a==null?u.rule.a==null:x.a===u.rule.a);const r=S.settings.rules.find(same);if(u.rule.prev){if(r)r.c=u.rule.prev}else S.settings.rules=S.settings.rules.filter(x=>!same(x));markDirty('settings')}
+  u.months.forEach(markMonth);K.done=Math.max(0,K.done-1);
+  K.queue=inbox().map(t=>t.id);K.idx=K.queue.indexOf(u.ch[0].id);if(K.idx<0)K.idx=0;
+  renderHeader();renderCard(true);toast('Fortrudt');
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const tab=e.target.closest('#tabs button');if(tab){S.ui.tab=tab.dataset.tab;renderAll();window.scrollTo(0,0);return}
+  const p=e.target.closest('[data-pick]');if(p){pick(p.dataset.pick);return}
+  const a=e.target.closest('[data-act]');if(!a)return;const act=a.dataset.act;
+  switch(act){
+    case 'start':startOwn();toast('Dit eget budget er startet – skriv beløbene ind');S.ui.tab='budget';renderAll();break;
+    case 'goimport':S.ui.tab='import';renderAll();break;
+    case 'tab':S.ui.tab=a.dataset.tab;renderAll();break;
+    case 'mprev':S.ui.month=addM(S.ui.month,-1);renderAll(true);break;
+    case 'mnext':S.ui.month=addM(S.ui.month,1);renderAll(true);break;
+    case 'ytd0':S.ui.ytd=false;renderAll(true);break;
+    case 'restsave':{const P=planCalc(S.ui.budgetYear);const p=S.settings.plan=S.settings.plan||{};let bal=P.nemStart;p.save=P.avail.map((v,i)=>{const free=v+P.save[i]-P.mad[i]-P.div[i];const put=Math.max(0,Math.floor((bal+free-P.nemMin)/100)*100);bal=bal+free-put;return put});markDirty('settings');renderAll(true);toast('Overskuddet over '+kr(P.nemMin)+' er sat ind på Opsparing');break}
+    case 'restdiv':{const P=planCalc(S.ui.budgetYear);const p=S.settings.plan=S.settings.plan||{};p.div=P.avail.map((v,i)=>Math.max(0,Math.floor((v-P.mad[i]-P.nemMin)/100)*100));markDirty('settings');renderAll(true);toast('Resten er sat til Diverse');break}
+    case 'resetxfer':{const p=S.settings.plan=S.settings.plan||{};delete p.mad;delete p.div;delete p.save;markDirty('settings');renderAll(true);toast('Mad og Diverse følger budgettet');break}
+    case 'brole':S.ui.bRole=a.dataset.r||'';renderAll(true);break;
+    case 'addgoal':{S.settings.goals=S.settings.goals||[];const id='g'+Date.now().toString(36);S.settings.goals.push({id,name:'Nyt mål',cat:'diverse',start:0,pm:null,use:Array(12).fill(0)});markDirty('settings');renderAll(true);const i=document.getElementById('gn_'+id);if(i){i.focus();i.select()}break}
+    case 'delgoal':{S.settings.goals=(S.settings.goals||[]).filter(g=>g.id!==a.dataset.g);markDirty('settings');renderAll(true);toast('Målet er slettet');break}
+    case 'ovrole':S.ui.ovRole=a.dataset.r||'';S.ui.ovOpen=null;renderAll(true);break;
+    case 'ytd1':S.ui.ytd=true;renderAll(true);break;
+    case 'openkat':openKat();break;
+    case 'closekat':closeKat();break;
+    case 'skip':K.idx++;renderCard(true);break;
+    case 'undo':undo();break;
+    case 'usesaldo':{const ls=latestSaldo();if(ls){S.settings.startBal=ls.s;S.settings.startDate=ls.d;markDirty('settings');renderAll(true)}break}
+    case 'addgroup':{const id='g'+Date.now().toString(36);const gs=S.settings.groups;const ig=gs.findIndex(g=>g.type==='ignore');gs.splice(ig<0?gs.length:ig,0,{id,name:'Nyt område',type:'expense'});markDirty('settings');renderAll(true);const i=document.querySelector('[data-gname="'+id+'"]');if(i){i.focus();i.select();i.scrollIntoView({block:'center'})}break}
+    case 'delgroup':{const g=a.dataset.g;if(S.settings.cats.some(c=>c.g===g))break;S.settings.groups=S.settings.groups.filter(x=>x.id!==g);markDirty('settings');renderAll(true);break}
+    case 'ovtoggle':S.ui.ovOpen=S.ui.ovOpen===a.dataset.id?null:a.dataset.id;renderAll(true);break;
+    case 'ovunset':{const t=txById(a.dataset.id);if(t){t.c=null;t.auto=false;markMonth(t.d.slice(0,7));renderAll(true);toast('Sendt til Kategorisér')}break}
+    case 'byear':S.ui.budgetYear=+a.dataset.y;renderAll(true);break;
+    case 'newyear':{const y=+a.dataset.y,src=Math.max(...yearList());S.settings.years=S.settings.years||{};const copy={};for(const c of S.settings.cats)copy[c.id]=clone(budObj(c,src));S.settings.years[y]=copy;S.ui.budgetYear=y;markDirty('settings');renderAll(true);toast('Budget '+y+' er oprettet som kopi af '+src);break}
+    case 'delyear1':$('#delyear').innerHTML='<span class="neg">Slet budget '+S.ui.budgetYear+'?</span> <button class="btn danger" type="button" data-act="delyear2">Slet</button> <button class="btn ghost" type="button" data-act="byear" data-y="'+S.ui.budgetYear+'">Behold</button>';break;
+    case 'delyear2':{const y=String(S.ui.budgetYear);if(yearList().length>1){delete S.settings.years[y];S.ui.budgetYear=srcYear(+y);markDirty('settings');renderAll(true);toast('Budget '+y+' er slettet')}break}
+    case 'savebuf':{const b=parseAmt($('#buffer').value);S.settings.buffer=isNaN(b)?0:b;markDirty('settings');renderAll(true);break}
+    case 'savebal':{const v=parseAmt($('#startBal').value),b=parseAmt($('#buffer').value);S.settings.startBal=$('#startBal').value.trim()===''||isNaN(v)?null:v;S.settings.startDate=CUR+'-'+pad(TODAY.getDate());S.settings.buffer=isNaN(b)?0:b;markDirty('settings');renderAll(true);break}
+    case 'addcat':{const g=a.dataset.g;const id='c'+Date.now().toString(36);S.settings.cats.push({id,name:'Ny post',g,b:{amt:0,f:1,s:1}});for(const y in (S.settings.years||{}))S.settings.years[y][id]={amt:0,f:1,s:1};
+      markDirty('settings');renderAll(true);const inp=document.querySelector('tr[data-cat="'+id+'"] input.name')||document.querySelector('[data-catname="'+id+'"]');if(inp){inp.focus();inp.select()}break}
+    case 'delcat':{const c=catById(a.dataset.id);if(!c)break;const n=allTx().filter(t=>t.c===c.id).length,nr=S.settings.rules.filter(r=>r.c===c.id).length;
+      const box=document.getElementById('delconfirm-'+c.id)||$('#delconfirm');
+      box.innerHTML='<div class="callout bad" style="flex-direction:column;gap:10px"><p>Slet <b>'+esc(c.name)+'</b>? Den har '+n+' transaktioner og '+nr+' genkendelsesord.</p><div class="row"><label class="row" style="gap:6px">Flyt dem til <select class="inp" id="moveTo" style="padding:4px 6px"><option value="">– ingen, send til Kategorisér –</option>'+catOptions('').replace('value="'+c.id+'"','value="'+c.id+'" disabled')+'</select></label><button class="btn danger" type="button" data-act="delcat2" data-id="'+c.id+'">Slet</button><button class="btn ghost" type="button" data-act="delcancel" data-id="'+c.id+'">Behold</button></div></div>';
+      box.scrollIntoView({behavior:'smooth',block:'center'});break}
+    case 'delcat2':{const id=a.dataset.id;const to=($('#moveTo')||{}).value||'';const st=S.settings;
+      st.cats=st.cats.filter(c=>c.id!==id);for(const y in (st.years||{}))delete st.years[y][id];
+      if(to)st.rules.forEach(r=>{if(r.c===id)r.c=to});else st.rules=st.rules.filter(r=>r.c!==id);
+      let moved=0;for(const k in S.months){let ch=false;for(const t of S.months[k])if(t.c===id){if(to){t.c=to;moved++}else{t.c=null;t.auto=false}ch=true}if(ch)markMonth(k)}
+      markDirty('settings');renderAll(true);toast(to?'Slettet · '+moved+' transaktioner og ordene er flyttet til '+catById(to).name:'Slettet');break}
+    case 'delcancel':{const box=document.getElementById('delconfirm-'+a.dataset.id)||$('#delconfirm');if(box)box.innerHTML='';break}
+    case 'delrule':{const i=+a.dataset.i;const r=S.settings.rules[i];if(!r)break;S.settings.rules.splice(i,1);
+      let back=0,re=0;for(const k in S.months){let ch=false;for(const t of S.months[k]){if(!t.auto||t.x||t.c!==r.c||!amtOk(r,t.a))continue;const h=hay(t);if(!ruleHits(h,r.k))continue;
+        const nr=findRule(t.t,t.t2,t.a);if(nr){if(nr.c!==t.c){t.c=nr.c;re++;ch=true}}else{t.c=null;t.auto=false;back++;ch=true}}if(ch)markMonth(k)}
+      markDirty('settings');renderAll(true);if(back||re)toast('“'+r.k+'” er fjernet · '+(back?back+' transaktioner er tilbage i Kategorisér':'')+(back&&re?', ':'')+(re?re+' fik en anden kategori':''));break}
+    case 'rerun':{let n=0;for(const k in S.months){let ch=false;for(const t of S.months[k]){if(t.c&&catById(t.c))continue;const r=findRule(t.t,t.t2,t.a);if(r){t.c=r.c;t.auto=true;n++;ch=true}}if(ch)markMonth(k)}renderAll(true);toast(n?n+' transaktioner fik en kategori':'Ingen nye match');break}
+    case 'doimport':doImport();break;
+    case 'cancelimport':pending=null;$('#mapArea').innerHTML='';break;
+    case 'export':exportCSV();break;
+    case 'exportbudget':exportBudget();break;
+    case 'applytpl':applyTemplate();break;
+    case 'exportall':exportAll();break;
+    case 'applybak':applyBackup();break;
+    case 'cancelbak':pendingBak=null;$('#mapArea').innerHTML='';break;
+    case 'logout':logout();break;
+    case 'canceltpl':pendingTpl=null;$('#mapArea').innerHTML='';break;
+    case 'wipe1':$('#wipeArea').innerHTML='<div class="row"><span class="neg">Er du sikker? Det kan ikke fortrydes.</span><button class="btn danger" type="button" data-act="wipe2">Ja, slet alt</button><button class="btn ghost" type="button" data-act="tab" data-tab="import">Nej</button></div>';break;
+    case 'wipe2':wipe();break;
+  }
+});
+$('#katBtn').addEventListener('click',openKat);
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeKat()});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!$('#modal').hidden)closeKat();
+  const el=e.target;
+  if(e.key==='Enter'&&el.dataset&&el.dataset.addrule){e.preventDefault();const mA=el.value.split('=');const k=normFull(mA[0]);if(!k)return;let ra=mA[1]!=null?Math.abs(parseAmt(mA[1])):null;if(ra!=null&&isNaN(ra))ra=null;
+    const ex=S.settings.rules.find(r=>r.k===k&&!r.k2&&(r.a==null?ra==null:r.a===ra));if(ex)ex.c=el.dataset.addrule;else{const nr={k,c:el.dataset.addrule};if(ra!=null)nr.a=ra;S.settings.rules.push(nr)}
+    let moved=0;for(const mk in S.months){let ch=false;for(const t of S.months[mk]){if(t.x||(t.c&&catById(t.c)&&!t.auto))continue;if(!ruleHits(hay(t),k)||(ra!=null&&!amtOk({a:ra},t.a)))continue;
+      const nr=findRule(t.t,t.t2,t.a);if(nr&&nr.c!==t.c){t.c=nr.c;t.auto=true;moved++;ch=true}}if(ch)markMonth(mk)}
+    markDirty('settings');renderAll(true);const n=document.querySelector('[data-addrule="'+el.dataset.addrule+'"]');if(n)n.focus();toast('“'+k+'”'+(ra!=null?' på '+fmtAmt(ra)+' kr.':'')+' lægges nu i '+catById(el.dataset.addrule).name+(moved?' · '+moved+' transaktioner flyttet':''))}
+});
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.dataset.tx){const t=txById(el.dataset.tx);if(t){t.c=el.value||null;t.auto=false;markMonth(el.dataset.k);renderHeader();el.style.borderColor=t.c?'':'var(--warn)';if(S.ui.tab==='oversigt'){renderAll(true);if(t.c)toast('Flyttet til '+catById(t.c).name)}}}
+  else if(el.dataset.rule!==undefined&&el.dataset.rule){const r=S.settings.rules.find(x=>x.k===el.dataset.rule);if(r){r.c=el.value;markDirty('settings')}}
+  else if(el.dataset.gname){const g=S.settings.groups.find(x=>x.id===el.dataset.gname);if(g&&el.value.trim()){g.name=el.value.trim();markDirty('settings')}}
+  else if(el.dataset.catgroup){const c=catById(el.dataset.catgroup);if(c){c.g=el.value;markDirty('settings');renderAll(true);toast(c.name+' er flyttet til '+G(c.g).name)}}
+  else if(el.dataset.catname){const c=catById(el.dataset.catname);if(c&&el.value.trim()){c.name=el.value.trim();markDirty('settings');renderHeader()}}
+  else if(el.dataset.accname){const a=S.settings.accounts.find(x=>x.no===el.dataset.accname);if(a){a.name=el.value.trim()||a.name;markDirty('settings')}}
+  else if(el.dataset.accliq){const a=S.settings.accounts.find(x=>x.no===el.dataset.accliq);if(a){a.liq=el.checked;markDirty('settings');renderAll(true)}}
+  else if(el.dataset.acctype){const a=S.settings.accounts.find(x=>x.no===el.dataset.acctype);if(a){a.type=el.value;if(el.value==='lan'||el.value==='udenfor')a.liq=false;S._repaired=0;markDirty('settings');renderAll(true)}}
+  else if(el.dataset.inc||el.dataset.incall){const c=catById(el.dataset.inc||el.dataset.incall);if(c){const b=editBud(c);
+      if(b.f!=='m'){b.m=Array.from({length:12},(_,i)=>budgetFor(c,i+1));b.f='m'}
+      const v=parseAmt(el.value);const val=isNaN(v)?0:Math.abs(v);
+      if(el.dataset.incall){if(el.value.trim()!=='')b.m=Array(12).fill(val)}else b.m[+el.dataset.i]=val;
+      markDirty('settings');renderAll(true)}}
+  else if(el.dataset.xall||el.dataset.xm){const p=S.settings.plan=S.settings.plan||{};const k=el.dataset.xall||el.dataset.xm;const arr=p[k]=Array.isArray(p[k])?p[k]:Array(12).fill(null);
+    const v=el.value.trim()===''?null:parseAmt(el.value);const val=v==null||isNaN(v)?null:Math.abs(v);
+    if(el.dataset.xall){for(let i=0;i<12;i++)arr[i]=val}else arr[+el.dataset.i]=val;markDirty('settings');renderAll(true)}
+  else if(el.dataset.pf){const p=S.settings.plan=S.settings.plan||{};const v=el.value.trim()===''?null:parseAmt(el.value);p[el.dataset.pf]=v==null||isNaN(v)?(el.dataset.pf==='buffer'?0:null):v;markDirty('settings');renderAll(true)}
+  else if(el.dataset.gf){const g=(S.settings.goals||[]).find(x=>x.id===el.dataset.g);if(g){const f=el.dataset.gf;
+    if(f==='name')g.name=el.value.trim()||g.name;else if(f==='cat')g.cat=el.value;
+    else if(f==='use'){g.use=g.use||Array(12).fill(0);const v=parseAmt(el.value);g.use[+el.dataset.i]=isNaN(v)?0:Math.abs(v)}
+    else{const v=el.value.trim()===''?null:parseAmt(el.value);g[f]=v==null||isNaN(v)?(f==='start'?0:null):v}
+    markDirty('settings');renderAll(true)}}
+  else if(el.dataset.role&&el.closest('#main')&&S.ui.tab==='fordeling'){S.settings.roles=S.settings.roles||{};S.settings.roles[el.dataset.role]=el.value;markDirty('settings');renderAll(true);toast(ROLE(el.dataset.role)[1]+' er koblet til '+(el.value?accName(el.value):'ingen konto'))}
+  else if(el.id==='tfAcc'){S.ui.tfAcc=el.value;renderAll(true)}
+  else if(el.id==='tfMonth'){S.ui.tfMonth=el.value;renderAll(true)}
+  else if(el.id==='tfCat'){S.ui.tfCat=el.value;renderAll(true)}
+});
+let qT;document.addEventListener('input',e=>{if(e.target.id==='tfQ'){clearTimeout(qT);const v=e.target.value;qT=setTimeout(()=>{S.ui.tfQ=v;renderAll(true);const i=$('#tfQ');if(i){i.focus();i.setSelectionRange(v.length,v.length)}},250)}});
+document.addEventListener('submit',e=>{if(e.target.id==='loginForm'){e.preventDefault();doLogin();return}if(e.target.id==='ruleForm'){e.preventDefault();const k=normFull($('#rk').value);const c=$('#rc').value;if(!k)return;const ex=S.settings.rules.find(r=>r.k===k);if(ex)ex.c=c;else S.settings.rules.push({k,c});markDirty('settings');renderAll(true);toast('Regel for “'+k+'” gemt')}});
+
+initStore();
+})();
+</script>
+</body></html>
