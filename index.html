@@ -1153,10 +1153,10 @@ function taxObj(){const st=S.settings;if(!st.tax){const inc=st.cats.filter(c=>G(
   st.tax={persons:(inc.length?inc:[{id:'',name:'Løn'}]).slice(0,2).map((c,i)=>({id:'p'+i,name:c.name.replace(/^løn\s*/i,'')||('Person '+(i+1)),cat:c.id,brutto:null,pensionPct:null,pensionKr:null,atp:null,traek:null,fradrag:null,fribil:null,efterSkat:null,slipNetto:null})),month:CUR}}
   return st.tax}
 function taxCalc(p,o){o=o||{};const brutto=+(o.brutto!=null?o.brutto:p.brutto)||0;
-  const pens=(+p.pensionKr||0)+brutto*(+p.pensionPct||0)/100;const atp=+p.atp||0;
+  const pens=(+p.pensionKr||0)+brutto*(+p.pensionPct||0)/100*(p.pensionBase!=null&&p.pensionBase!==''?+p.pensionBase:100)/100;const atp=+p.atp||0;
   const base=Math.max(0,brutto-atp-pens);const am=Math.round(base*AM_PCT/100);
   const fb=(o.fribil!=null?+o.fribil:fbFor(p))/12;
-  const skattepl=base-am+fb;const askat=Math.round(Math.max(0,skattepl-(+p.fradrag||0))*(+p.traek||0)/100);
+  const skattepl=base-am+fb;const askat=Math.floor(Math.max(0,skattepl-(+p.fradrag||0))*(+p.traek||0)/100);
   const efter=o.efterSkat!=null?+o.efterSkat:+p.efterSkat||0;
   const netto=base-am-askat-efter;
   return {brutto,pens,atp,base,am,fb,skattepl,askat,efter,netto}}
@@ -1171,7 +1171,7 @@ function vSkat(){
   for(const p of t.persons){const c=taxCalc(p);const noFb=taxCalc(p,{fribil:0});
     const diff=p.slipNetto!=null&&p.brutto?c.netto-p.slipNetto:null;
     h+='<section class="panel lncard"><div class="row spread"><input class="inp gname" data-tp="'+p.id+'" data-tk="name" value="'+esc(p.name)+'" aria-label="Navn"><button class="x" type="button" data-act="tpdel" data-id="'+p.id+'" aria-label="Fjern '+esc(p.name)+'">✕</button></div>'+
-      '<div class="lnf">'+f(p,'Bruttoløn pr. md','brutto','fx 45.000')+f(p,'Pension, eget bidrag %','pensionPct','fx 4',1)+f(p,'Pension, eget bidrag kr.','pensionKr','0')+f(p,'ATP pr. md','atp','fx 99')+
+      '<div class="lnf">'+f(p,'Bruttoløn pr. md','brutto','fx 45.000')+f(p,'Pension, eget bidrag %','pensionPct','fx 4',1)+f(p,'Pension beregnes af (% af lønnen)','pensionBase','100',1)+f(p,'Pension, eget bidrag kr.','pensionKr','0')+f(p,'ATP pr. md','atp','fx 99')+
       f(p,'Trækprocent %','traek','fx 38',1)+f(p,'Fradrag pr. md','fradrag','fx 5.000')+f(p,'Fri bil – skattepligtig værdi pr. år','fribil','0')+f(p,'Træk efter skat pr. md','efterSkat','fx medarbejderlån')+
       f(p,'Netto på lønsedlen (til kontrol)','slipNetto','valgfrit')+
       '<label class="field"><span class="label">Lønnen står i budgettet som</span><select class="inp" data-tp="'+p.id+'" data-tk="cat"><option value="">– ingen –</option>'+inc.map(x=>'<option value="'+x.id+'"'+(x.id===p.cat?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'</select></label></div>';
@@ -1194,13 +1194,16 @@ function taxApply(){const t=taxObj();const ym=t.month||CUR;let n=0;const st=S.se
   const ensure=(id,name)=>{let c=catById(id);if(!c){const g=(grp().find(x=>x.type==='income')||{}).id;c={id,name,g,b:{amt:0,f:1,s:1}};st.cats.push(c)}else c.name=name;return c};
   for(const p of t.persons){if(!(p.brutto&&p.traek!=null&&p.cat))continue;const c=catById(p.cat);if(!c)continue;const v=taxCalc(p,{fribil:0}).netto;budFrom(c,ym,()=>v);n++;
     const plans={};const pl=y=>plans[y]||(plans[y]=fvPlan(p,y));if((+p.fvPct||+p.fvPct2)&&(p.fvMonths||[]).length&&!p.fvLoan){const fc=ensure('fv_'+p.id,'Fritvalg ('+p.name+')');budFrom(fc,ym,(x,m,y)=>pl(y).out[m-1].fvNet)}
-    for(const e of (p.extras||[])){if(!+e.amt)continue;const ec=ensure('ex_'+e.id,(e.name||'Ekstra')+' ('+p.name+')');budFrom(ec,ym,(x,m)=>m===+e.m?netExtra(p,+e.amt):0)}}
+    for(const e of (p.extras||[])){if(!+e.amt)continue;const ec=ensure('ex_'+e.id,(e.name||'Ekstra')+' ('+p.name+')');budFrom(ec,ym,(x,m)=>m===+e.m?netExtra(p,+e.amt,e.pens===false?0:pfLon(p)):0)}}
   markDirty('settings');renderAll(true);toast('Nettoløn, fritvalg og ekstra udbetalinger er lagt i budgettet fra '+mLabel(ym,true))}
 
 /* ---------- Fritvalg og ekstra udbetalinger ---------- */
 /* Fritvalg optjenes hver måned af (løn + fri bil/12 + ekstra udbetalinger i måneden) × fritvalgsprocent og udbetales i de valgte måneder
    (hele saldoen siden sidste udbetaling, inkl. måneden selv). Ekstra udbetalinger beskattes fuldt: AM 8 %, derefter trækprocenten (fradraget er brugt på lønnen). */
-const netExtra=(p,F)=>{const am=F*AM_PCT/100;return F-am-(F-am)*(+p.traek||0)/100};
+const netExtra=(p,F,pf)=>{const pen=F*(+p.pensionPct||0)/100*(pf||0);const b=F-pen;const am=b*AM_PCT/100;return b-am-(b-am)*(+p.traek||0)/100};
+const pfLon=p=>(p.pensionBase!=null&&p.pensionBase!==''?+p.pensionBase:100)/100;
+const pfFv=p=>(+p.pensionFv||0)/100;
+function extrasNetIn(p,m){return (p.extras||[]).filter(e=>+e.m===m).reduce((s,e)=>s+netExtra(p,+e.amt||0,e.pens===false?0:pfLon(p)),0)}
 function extrasIn(p,m){return (p.extras||[]).filter(e=>+e.m===m).reduce((s,e)=>s+(+e.amt||0),0)}
 const fvPctFor=(p,y)=>(p.fvPct2!=null&&y>=+(p.fvYear2||TODAY.getFullYear()+1))?+p.fvPct2:(+p.fvPct||0);
 function fvPlan(p,y){y=y||S.ui.budgetYear||TODAY.getFullYear();
@@ -1208,8 +1211,8 @@ function fvPlan(p,y){y=y||S.ui.budgetYear||TODAY.getFullYear();
   const accAt=j=>{const yy=j<=0?y-1:y,m=j<=0?j+12:j;return fvPctFor(p,yy)/100*((+p.brutto||0)+(fbActive(yy,m)?fbFor(p)/12:0)+extrasIn(p,m))};
   const acc=Array.from({length:12},(_,i)=>accAt(i+1));
   const out=Array.from({length:12},()=>({fv:0,fvNet:0,ex:0,exNet:0}));
-  if(pct&&pay.length){for(let k=0;k<pay.length;k++){const m=pay[k];const prev=k?pay[k-1]:pay[pay.length-1]-12;let F=0;for(let j=prev+1;j<=m;j++)F+=accAt(j);out[m-1].fv=F;out[m-1].fvNet=netExtra(p,F)}}
-  for(let m=1;m<=12;m++){const e=extrasIn(p,m);out[m-1].ex=e;out[m-1].exNet=netExtra(p,e)}
+  if(pct&&pay.length){for(let k=0;k<pay.length;k++){const m=pay[k];const prev=k?pay[k-1]:pay[pay.length-1]-12;let F=0;for(let j=prev+1;j<=m;j++)F+=accAt(j);out[m-1].fv=F;out[m-1].fvNet=netExtra(p,F,pfFv(p))}}
+  for(let m=1;m<=12;m++){const e=extrasIn(p,m);out[m-1].ex=e;out[m-1].exNet=extrasNetIn(p,m)}
   const year=out.reduce((s,o)=>s+o.fvNet,0);
   return {acc,out,pay,pct,y,avgNet:year/12,yearNet:year,yearAcc:acc.reduce((s,v)=>s+v,0)}}
 /* ekstra afdrag pr. md på et lån fra fritvalg (gennemsnit over året) */
@@ -1219,11 +1222,12 @@ function vExtras(p){
   let h='<div class="lnres" style="display:flex;flex-direction:column;gap:10px"><div class="row spread"><span class="label">Fritvalg og ekstra udbetalinger</span></div>'+
     '<div class="lnf"><label class="field"><span class="label">Fritvalg % nu</span><input class="inp num" inputmode="decimal" data-tp="'+p.id+'" data-tk="fvPct" value="'+(p.fvPct==null?'':esc(String(p.fvPct).replace('.',',')))+'" placeholder="fx 12,5"></label>'+
     '<label class="field"><span class="label">Ny fritvalg % fra år</span><div class="row" style="gap:6px;flex-wrap:nowrap"><input class="inp num" style="min-width:0;flex:1" inputmode="decimal" data-tp="'+p.id+'" data-tk="fvPct2" value="'+(p.fvPct2==null?'':esc(String(p.fvPct2).replace('.',',')))+'" placeholder="fx 13,5"><input class="inp num" style="width:76px" inputmode="numeric" data-tp="'+p.id+'" data-tk="fvYear2" value="'+(p.fvYear2||'')+'" placeholder="'+(TODAY.getFullYear()+1)+'" aria-label="Fra år"></div></label>'+
+    '<label class="field"><span class="label">Pension af fritvalg (% af beløbet)</span><input class="inp num" inputmode="decimal" data-tp="'+p.id+'" data-tk="pensionFv" value="'+(p.pensionFv==null?'':esc(String(p.pensionFv).replace('.',',')))+'" placeholder="0"></label>'+
     '<label class="field"><span class="label">Fritvalget bruges til</span><select class="inp" data-tp="'+p.id+'" data-tk="fvLoan"><option value="">Udbetales til mig (kommer i budgettet)</option>'+loans.map(l=>'<option value="'+l.id+'"'+(p.fvLoan===l.id?' selected':'')+'>Ekstra afdrag på '+esc(l.name)+'</option>').join('')+'</select></label></div>'+
     '<div><span class="label">Udbetales i</span> <button class="btn ghost" type="button" data-act="fvall" data-id="'+p.id+'" style="padding:2px 8px">alle måneder</button><button class="btn ghost" type="button" data-act="fvjn" data-id="'+p.id+'" style="padding:2px 8px">juni + nov</button><div class="chips" style="margin-top:6px">'+
     MON.map((mn,i)=>'<label class="chip" style="display:inline-flex;gap:5px;align-items:center;padding:4px 10px"><input type="checkbox" data-tfm="'+(i+1)+'" data-tp="'+p.id+'"'+((p.fvMonths||[]).map(Number).includes(i+1)?' checked':'')+'>'+mn+'</label>').join('')+'</div></div>';
   h+='<div style="display:flex;flex-direction:column;gap:6px"><span class="label">Ekstra udbetalinger (fx bestyrelseshonorar, bonus)</span>'+
-    (p.extras||[]).map(e=>'<div class="row" style="gap:6px"><input class="inp" style="flex:1 1 140px" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="name" value="'+esc(e.name)+'" aria-label="Navn"><input class="inp num" style="width:110px" inputmode="decimal" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="amt" value="'+(e.amt?nf0.format(e.amt):'')+'" placeholder="beløb" aria-label="Beløb"><select class="inp" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="m" aria-label="Måned">'+MONL.map((l,i)=>'<option value="'+(i+1)+'"'+(+e.m===i+1?' selected':'')+'>'+l+'</option>').join('')+'</select><button class="x" type="button" data-act="exdel" data-id="'+e.id+'" data-p="'+p.id+'" aria-label="Fjern">✕</button></div>').join('')+
+    (p.extras||[]).map(e=>'<div class="row" style="gap:6px"><input class="inp" style="flex:1 1 140px" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="name" value="'+esc(e.name)+'" aria-label="Navn"><input class="inp num" style="width:110px" inputmode="decimal" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="amt" value="'+(e.amt?nf0.format(e.amt):'')+'" placeholder="beløb" aria-label="Beløb"><select class="inp" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="m" aria-label="Måned">'+MONL.map((l,i)=>'<option value="'+(i+1)+'"'+(+e.m===i+1?' selected':'')+'>'+l+'</option>').join('')+'</select><label class="row" style="gap:4px;font-size:13px"><input type="checkbox" data-te="'+e.id+'" data-tp="'+p.id+'" data-tef="pens"'+(e.pens===false?'':' checked')+'> med pension</label><button class="x" type="button" data-act="exdel" data-id="'+e.id+'" data-p="'+p.id+'" aria-label="Fjern">✕</button></div>').join('')+
     '<div><button class="btn" type="button" data-act="exadd" data-id="'+p.id+'" style="padding:4px 10px">＋ Tilføj ekstra udbetaling</button></div></div>';
   const rows=P.out.map((o,i)=>({o,i})).filter(x=>x.o.fv||x.o.ex);
   if(rows.length)h+='<div style="display:flex;flex-direction:column;gap:4px"><span class="label">Udbetalinger i '+P.y+' (brutto → netto) · fritvalg '+String(P.pct).replace('.',',')+' %</span>'+rows.map(({o,i})=>'<div class="row spread" style="gap:6px;border-top:1px solid var(--line);padding-top:4px"><span>'+MONL[i]+'</span><span class="num" style="font-size:13px">'+(o.fv?'fritvalg '+nf0.format(Math.round(o.fv))+' → <b>'+nf0.format(Math.round(o.fvNet))+'</b>':'')+(o.fv&&o.ex?' · ':'')+(o.ex?'ekstra '+nf0.format(Math.round(o.ex))+' → <b>'+nf0.format(Math.round(o.exNet))+'</b>':'')+'</span></div>').join('')+
@@ -1661,7 +1665,7 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target;
-  if(el.dataset.te){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);const ex=p&&(p.extras||[]).find(x=>x.id===el.dataset.te);if(ex){const k=el.dataset.tef;if(k==='name')ex.name=el.value.trim()||ex.name;else if(k==='m')ex.m=+el.value;else{const v=parseAmt(el.value);ex.amt=isNaN(v)?0:Math.abs(v)}markDirty('settings');renderAll(true)}return}
+  if(el.dataset.te){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);const ex=p&&(p.extras||[]).find(x=>x.id===el.dataset.te);if(ex){const k=el.dataset.tef;if(k==='name')ex.name=el.value.trim()||ex.name;else if(k==='m')ex.m=+el.value;else if(k==='pens')ex.pens=el.checked;else{const v=parseAmt(el.value);ex.amt=isNaN(v)?0:Math.abs(v)}markDirty('settings');renderAll(true)}return}
   if(el.dataset.tfm){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const st=new Set((p.fvMonths||[]).map(Number));const m=+el.dataset.tfm;if(el.checked)st.add(m);else st.delete(m);p.fvMonths=[...st].sort((a,b)=>a-b);markDirty('settings');renderAll(true)}return}
   if(el.dataset.tp){const p=taxObj().persons.find(x=>x.id===el.dataset.tp);if(p){const k=el.dataset.tk;if(k==='name')p.name=el.value.trim()||p.name;else if(k==='cat'||k==='fvLoan')p[k]=el.value;else{const v=el.value.trim()===''?null:parseAmt(el.value);p[k]=v==null||isNaN(v)?null:Math.abs(v)}markDirty('settings');renderAll(true)}return}
   if(el.dataset.tm){taxObj().month=el.value;markDirty('settings');renderAll(true);return}
