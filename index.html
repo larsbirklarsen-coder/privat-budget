@@ -845,12 +845,15 @@ function vKontrol(P){
 function latestSaldo(){let best=null;for(const t of allTx())if(typeof t.s==='number'&&(!best||t.d>best.d))best=t;return best}
 function projection(){
   const st=S.settings;let bal=startBalance().bal;const rows=[];
+  const GP=S.ui.liqPlan!==false&&st.gplan&&(st.loans||[]).some(l=>l.bal!=null&&l.bal!=='')?gpCalc():null;let lastAdj=0;
   for(let i=0;i<12;i++){
     const key=addM(CUR,i),m=mNum(key),yy=+key.slice(0,4);let inc=0,out=0;
     for(const c of st.cats){const t=G(c.g).type;if(t==='ignore')continue;const b=budgetFor(c,m,yy);
       if(i===0){const a=actualIn(c.id,[key]);const left=Math.max(b-a,0);if(t==='income')inc+=left;else out+=left}
       else{if(t==='income')inc+=b;else out+=b}}
-    bal+=inc-out;rows.push({key,inc,out,net:inc-out,bal});
+    let toLoan=0,extraIn=0;
+    if(GP&&i>0){const r=GP.rows.find(x=>x.ym===key);if(r){toLoan=Object.values(r.pays).reduce((s,v)=>s+v,0);extraIn=r.inflow+r.lump-(inc-out);lastAdj=r.adj}else extraIn=lastAdj}
+    bal+=inc-out+extraIn-toLoan;rows.push({key,inc,out,net:inc-out,extraIn,toLoan,bal});
   }
   return rows;
 }
@@ -858,8 +861,10 @@ function vLikviditet(){
   const st=S.settings;const rows=projection();const buf=+st.buffer||0;
   const low=rows.reduce((a,r)=>r.bal<a.bal?r:a,rows[0]);
   const firstNeg=rows.find(r=>r.bal<0),firstBuf=rows.find(r=>r.bal<buf);
-  let h='<div><h1>Likviditet de næste 12 måneder</h1><p class="sub">Startsaldo plus budgetterede indtægter minus budgetterede udgifter, måned for måned. For '+MONL[mNum(CUR)-1]+' tæller kun det, der er tilbage af budgettet. Saldoen er vist ultimo hver måned.</p><p class="sub">Bruger '+[...new Set(rows.map(r=>srcYear(+r.key.slice(0,4))))].map(y=>'<b>budget '+y+'</b>').join(' og ')+(rows.some(r=>!(S.settings.years||{})[r.key.slice(0,4)])?' – år uden eget budget bruger det seneste. Lav dem under fanen Budget.':'.')+'</p></div>';
+  const hasPlan=!!(st.gplan&&(st.loans||[]).some(l=>l.bal!=null&&l.bal!==''));
+  let h=(hasPlan?'<div class="seg" role="group" aria-label="Visning"><button type="button" data-act="liqplan" data-v="1" aria-pressed="'+(S.ui.liqPlan!==false)+'">Med Gældfri-planen</button><button type="button" data-act="liqplan" data-v="0" aria-pressed="'+(S.ui.liqPlan===false)+'">Kun budgettet</button></div>':'')+'<div><h1>Likviditet de næste 12 måneder</h1><p class="sub">Startsaldo plus budgetterede indtægter minus budgetterede udgifter, måned for måned. For '+MONL[mNum(CUR)-1]+' tæller kun det, der er tilbage af budgettet. Saldoen er vist ultimo hver måned.</p><p class="sub">Bruger '+[...new Set(rows.map(r=>srcYear(+r.key.slice(0,4))))].map(y=>'<b>budget '+y+'</b>').join(' og ')+(rows.some(r=>!(S.settings.years||{})[r.key.slice(0,4)])?' – år uden eget budget bruger det seneste. Lav dem under fanen Budget.':'.')+'</p></div>';
   const sb=startBalance();const accs=st.accounts||[];
+  const r0=rows[0];h+='<div class="callout warn"><p><b>Resten af '+MONL[mNum(CUR)-1]+':</b> ifølge budgettet mangler der at komme <b>'+kr(r0.inc)+'</b> ind (fx løn, der ikke er importeret endnu) og gå <b>'+kr(r0.out)+'</b> ud. Derfor ændrer saldoen sig allerede i '+MONL[mNum(CUR)-1]+'.'+(S.ui.liqPlan!==false&&hasPlan?' Fra '+MONL[mNum(addM(CUR,1))-1]+' er Gældfri-planens ekstra afdrag, engangsafdrag og salget af bilen regnet med.':'')+'</p></div>';
   if(accs.length){
     h+='<div class="tablewrap"><table><thead><tr><th>Konto</th><th>Nr.</th><th class="r">Saldo</th><th>Seneste bevægelse</th><th>Type</th><th>Med i likviditet</th></tr></thead><tbody>'+
       accs.map(a=>{const s=accSaldo(a.no);return '<tr><td><input class="inp" data-accname="'+esc(a.no)+'" value="'+esc(a.name)+'" aria-label="Navn på konto" style="padding:4px 8px;min-width:150px"></td><td class="num muted">…'+esc(a.no.slice(-4))+'</td><td class="r num '+(s&&s.s<0?'neg':'')+'">'+(s?kr2(s.s):'–')+'</td><td class="muted">'+(s?dayLabel(s.d):'–')+'</td><td><select class="inp" style="padding:3px 6px" data-acctype="'+esc(a.no)+'" aria-label="Type for '+esc(a.name)+'">'+ATYPES.map(x=>'<option value="'+x[0]+'"'+(accType(a.no)===x[0]?' selected':'')+'>'+x[1]+'</option>').join('')+'</select></td><td><input type="checkbox" data-accliq="'+esc(a.no)+'"'+(a.liq?' checked':'')+' aria-label="Medtag '+esc(a.name)+'"></td></tr>'}).join('')+
@@ -878,10 +883,10 @@ function vLikviditet(){
   else if(firstBuf)h+='<div class="callout warn"><p><b>Under din buffer i '+mLabel(firstBuf.key,true)+'</b> ('+kr(firstBuf.bal)+'). Laveste punkt er '+kr(low.bal)+' i '+mLabel(low.key,true)+'.</p></div>';
   else h+='<div class="callout ok"><p>Saldoen holder sig over din buffer hele året. Laveste punkt er '+kr(low.bal)+' i '+mLabel(low.key,true)+'.</p></div>';
   h+='<div class="panel chart">'+chart(rows,buf,sb.bal)+'<div class="legend"><span><i style="background:var(--accent)"></i>Saldo ultimo</span><span><i style="background:var(--warn)"></i>Buffer</span><span><i style="background:var(--neg)"></i>Under buffer</span></div></div>';
-  h+='<div class="tablewrap"><table><thead><tr><th>Måned</th><th class="r">Indtægter</th><th class="r">Udgifter</th><th class="r">Netto</th><th class="r">Saldo ultimo</th><th>Største poster</th></tr></thead><tbody>';
+  h+='<div class="tablewrap"><table><thead><tr><th>Måned</th><th class="r">Indtægter</th><th class="r">Udgifter</th><th class="r">Netto</th><th class="r">Bil, fritvalg m.m.</th><th class="r">Til lån</th><th class="r">Saldo ultimo</th><th>Største poster</th></tr></thead><tbody>';
   for(const r of rows){
     const m=mNum(r.key),yy=+r.key.slice(0,4);const big=S.settings.cats.filter(c=>{const b=budObj(c,yy);return G(c.g).type==='expense'&&(b.f==='m'||+b.f>1)&&budgetFor(c,m,yy)}).map(c=>esc(c.name)+' '+kr(budgetFor(c,m,yy)));
-    h+='<tr><td>'+mLabel(r.key,true)+(r.key===CUR?' <span class="pill info">rest</span>':'')+'</td><td class="r num">'+kr(r.inc)+'</td><td class="r num">'+kr(r.out)+'</td><td class="r num '+(r.net<0?'neg':'')+'">'+kr(r.net)+'</td><td class="r num"><span class="pill '+(r.bal<0?'bad':r.bal<buf?'warn':'ok')+'">'+kr(r.bal)+'</span></td><td class="muted" style="font-size:13px">'+(big.join(' · ')||'–')+'</td></tr>';
+    h+='<tr><td>'+mLabel(r.key,true)+(r.key===CUR?' <span class="pill info">rest</span>':'')+'</td><td class="r num">'+kr(r.inc)+'</td><td class="r num">'+kr(r.out)+'</td><td class="r num '+(r.net<0?'neg':'')+'">'+kr(r.net)+'</td><td class="r num">'+(r.extraIn?kr(r.extraIn):'–')+'</td><td class="r num '+(r.toLoan?'neg':'')+'">'+(r.toLoan?'−'+kr(r.toLoan):'–')+'</td><td class="r num"><span class="pill '+(r.bal<0?'bad':r.bal<buf?'warn':'ok')+'">'+kr(r.bal)+'</span></td><td class="muted" style="font-size:13px">'+(big.join(' · ')||'–')+'</td></tr>';
   }
   return h+'</tbody></table></div>';
 }
@@ -1328,7 +1333,7 @@ function gpCalc(){
     for(const x of S0.filter(z=>z.inPlan).sort((a,b)=>order.indexOf(a.l)-order.indexOf(b.l))){if(x.paid||x.bal<=0)continue;
       if(lnSave(x.l)){const need=x.bal+(+x.l.cost||0);if(pool>=need){pool-=need;pays[x.l.id]=(pays[x.l.id]||0)+need;x.bal=0;x.paid=ym;freed+=x.pm;continue}saving={id:x.l.id,need,have:Math.max(0,pool)};break}
       if(pool<=0)break;const p=Math.min(pool,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
-    rows.push({ym,base,inflow,lump,pays,saving,avail,pool,debt:S0.filter(z=>z.inPlan).reduce((s,z)=>s+z.bal,0),bals:Object.fromEntries(S0.map(z=>[z.l.id,z.bal]))});
+    rows.push({ym,base,inflow,lump,pays,saving,avail,adj:inflow-base,pool,debt:S0.filter(z=>z.inPlan).reduce((s,z)=>s+z.bal,0),bals:Object.fromEntries(S0.map(z=>[z.l.id,z.bal]))});
     if(S0.filter(z=>z.inPlan).every(z=>z.paid)&&i>=2)break;
     ym=addM(ym,1);
   }
@@ -1815,6 +1820,7 @@ document.addEventListener('click',e=>{
     case 'gladd':{const gp=gpObj();gp.lumps=gp.lumps||[];gp.lumps.push({id:'g'+Date.now().toString(36),name:'Skat retur',amt:0,ym:addM(CUR,5)});markDirty('settings');renderAll(true);break}
     case 'gldel':{const gp=gpObj();gp.lumps=(gp.lumps||[]).filter(x=>x.id!==a.dataset.id);markDirty('settings');renderAll(true);break}
     case 'gpup':gpMove(a.dataset.id,-1);break;
+    case 'liqplan':S.ui.liqPlan=a.dataset.v==='1';renderAll(true);break;
     case 'lladd':{const l=(S.settings.loans||[]).find(x=>x.id===a.dataset.id);if(l){l.lumps=l.lumps||[];l.lumps.push({id:'a'+Date.now().toString(36),amt:0,ym:addM(CUR,1)});markDirty('settings');renderAll(true)}break}
     case 'lldel':{const l=(S.settings.loans||[]).find(x=>x.id===a.dataset.l);if(l){l.lumps=(l.lumps||[]).filter(x=>x.id!==a.dataset.id);markDirty('settings');renderAll(true)}break}
     case 'gpdown':gpMove(a.dataset.id,1);break;
