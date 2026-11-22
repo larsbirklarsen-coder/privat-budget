@@ -744,7 +744,7 @@ function planCalc(y){
   const avail=inc.map((v,i)=>v-T-lon[i]-save[i]);const nemMin=+plan.nemMin||0;
   const GY=gpYear(y);const sweepOn=plan.sweep!==false;
   const rest=avail.map((v,i)=>v-madP[i]-divP[i]-(sweepOn?0:GY.pays[i]-GY.extra[i]));const sweep=Array(12).fill(0);let nc=+plan.nemStart||0;
-  const nemCum=rest.map((v,i)=>{nc+=v;if(sweepOn&&nc>nemMin+0.5){sweep[i]=Math.floor((nc-nemMin)/100)*100;nc-=sweep[i]}return nc});
+  const nemCum=rest.map((v,i)=>{nc+=v;if(sweepOn){if(nc>nemMin+0.5)sweep[i]=Math.floor((nc-nemMin)/100)*100;else if(nc<nemMin-0.5)sweep[i]=-Math.ceil((nemMin-nc)/100)*100;nc-=sweep[i]}return nc});
   const osIn=saveP.map((v,i)=>v+sweep[i]+(sweepOn?GY.extra[i]:0)),osOut=useTot.map((v,i)=>v+(sweepOn?GY.pays[i]:0));let ps2=gl.reduce((s,o)=>s+(+o.g.start||0),0)+(+plan.osStart||0);const osSal=osIn.map((v,i)=>ps2=ps2+v-osOut[i]);
   const cumF=(p,b,st)=>{let c=+st||0;return p.map((v,i)=>c=c+v-b[i])};const madCum=cumF(madP,madB,plan.madStart),divCum=cumF(divP,divB,plan.divStart);
   return {gy:GY,sweepOn,sweep,osIn,osOut,osSal,nemCum,nemStart:+plan.nemStart||0,saveB,saveSet,saveManual,potSal:osSal,useTot,madCum,divCum,inc,incRows,bud,mad:madP,div:divP,madB,divB,madSet,divSet,avail,nemMin,lon,lonRows,save,goals,T,auto,start,buf,year,bsal,low,rest};
@@ -791,7 +791,7 @@ function vFordeling(){
     '<tr class="tot"><td>Til rådighed for Mad og Diverse</td>'+cells(P.avail,1)+'</tr>'+
     '<tr class="grp"><td colspan="14">Din fordeling <span class="muted" style="font-weight:400">– skriv beløbet ud for “Pr. md.”, eller ret de enkelte måneder</span></td></tr>'+
     xferRow('mad','Til Mad',rac('mad'),P.mad,P.madSet,P.madB,P.madCum,plan.madStart)+xferRow('div','Til Diverse',rac('diverse'),P.div,P.divSet,P.divB,P.divCum,plan.divStart)+
-    (P.sweepOn?'<tr><td>Overskud til Opsparing <span class="muted">· alt over '+kr(P.nemMin)+' på Nemkontoen</span></td>'+cells(P.sweep)+'</tr>':'')+
+    (P.sweepOn?'<tr><td>Overskud til Opsparing <span class="muted">· alt over '+kr(P.nemMin)+' på Nemkontoen (minus = hentet tilbage)</span></td>'+cells(P.sweep)+'</tr>':'')+
     (P.gy.pays.some(Boolean)||P.gy.extra.some(Boolean)?'<tr class="grp"><td colspan="14">Gældfri-planen <span class="muted" style="font-weight:400">– fra fanen Gæld'+(P.sweepOn?', betales fra Opsparing':'')+'</span></td></tr>'+
       '<tr><td>Salg af bil, fritvalg m.m. <span class="muted">· ind</span></td>'+cells(P.gy.extra)+'</tr>'+
       '<tr><td>Til lån <span class="muted">· ekstra afdrag</span></td>'+cells(P.gy.pays.map(v=>-v),1)+'</tr>':'')+
@@ -1466,7 +1466,7 @@ function vOpsparing(){
   rows.forEach((r,i)=>{if(i<=curI||curI<0&&r.past){r.sal=null}else{sal+=r.plIn-r.plOut;r.sal=sal}});
   if(curI>=0)rows[curI].sal=totSal;
   h+='<div class="tablewrap"><table><thead><tr><th>Måned</th><th class="r">Ind (budget)</th><th class="r">Ind (faktisk)</th><th class="r">Ud (budget)</th><th class="r">Ud (faktisk)</th><th class="r">Saldo</th><th>Hvad sker der</th></tr></thead><tbody>'+
-    rows.map((r,i)=>{const m=i;const what=[];if(P.save[m])what.push('til mål '+nf0.format(Math.round(P.save[m])));if(P.sweep[m])what.push('overskud '+nf0.format(Math.round(P.sweep[m])));if(P.gy.extra[m]>0.5)what.push('bil/fritvalg '+nf0.format(Math.round(P.gy.extra[m])));
+    rows.map((r,i)=>{const m=i;const what=[];if(P.save[m])what.push('til mål '+nf0.format(Math.round(P.save[m])));if(P.sweep[m]>0)what.push('overskud '+nf0.format(Math.round(P.sweep[m])));if(P.sweep[m]<0)what.push('til Nemkonto '+nf0.format(Math.round(P.sweep[m])));if(P.gy.extra[m]>0.5)what.push('bil/fritvalg '+nf0.format(Math.round(P.gy.extra[m])));
       goals.forEach(g=>{const u=+(g.use||[])[m]||0;if(u)what.push(esc(g.name)+' −'+nf0.format(u))});if(P.gy.pays[m]>0.5)what.push('lån −'+nf0.format(Math.round(P.gy.pays[m])));
       const fut=!r.past;return '<tr'+(r.ym===CUR?' class="ovopen"':'')+'><td>'+mLabel(r.ym)+(r.ym===CUR?' <span class="pill info">nu</span>':'')+'</td><td class="r num">'+kr(r.plIn)+'</td><td class="r num">'+(fut?'<span class="muted">–</span>':kr(r.fi))+'</td><td class="r num">'+kr(r.plOut)+'</td><td class="r num">'+(fut?'<span class="muted">–</span>':kr(r.fo))+'</td><td class="r num '+(r.sal!=null&&r.sal<0?'neg':'')+'">'+(r.sal==null?'<span class="muted">–</span>':kr(r.sal)+(r.ym===CUR?'<div class="muted" style="font-size:11.5px">i dag</div>':'<div class="muted" style="font-size:11.5px">forventet</div>'))+'</td><td style="font-size:13px" class="muted">'+(what.join(' · ')||'–')+'</td></tr>'}).join('')+'</tbody></table></div>';
   h+='<p class="muted" style="font-size:13px">Ind og ud på budgettet kommer fra Fordeling (til mål + overskud fra Nemkontoen over '+kr(P.nemMin)+') og Gældfri-planen. Faktisk er bankposterne på '+accs.map(a=>esc(a.name)).join(' og ')+'. Saldoen frem i tiden starter fra saldoen i dag.</p>';
