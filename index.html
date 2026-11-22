@@ -665,6 +665,8 @@ let _lr;function laterRender(){clearTimeout(_lr);_lr=setTimeout(()=>renderAll(tr
 function monthPick(){return '<div class="monthpick"><button type="button" data-act="mprev" aria-label="Forrige måned">‹</button><span>'+mLabel(S.ui.month,true)+'</span><button type="button" data-act="mnext" aria-label="Næste måned">›</button></div>'}
 
 /* ---------- Oversigt ---------- */
+function ovColl(){if(!S.ui.ovColl){let v={};try{v=JSON.parse(localStorage.getItem('pb.ovColl')||'{}')||{}}catch(e){}S.ui.ovColl=v}return S.ui.ovColl}
+function ovCollSave(){try{localStorage.setItem('pb.ovColl',JSON.stringify(S.ui.ovColl||{}))}catch(e){}}
 function vOversigt(){
   if(S.ui.ovRole==='opspar'){S.ui.ovRole='';const top=vOversigt();S.ui.ovRole='opspar';const seg=top.slice(0,top.indexOf('</div>')+6).replace('aria-pressed="true"','aria-pressed="false"').replace('data-r="opspar" aria-pressed="false"','data-r="opspar" aria-pressed="true"');return seg+'<div class="row">'+monthPick()+'</div>'+vOpsparing()}
   const keys=monthKeysFor();const cats=S.settings.cats;
@@ -695,11 +697,13 @@ function vOversigt(){
     kpi('Resultat',kr(res),'Budgetteret '+kr(incB-expB),res<0?'neg':'pos')+
     kpi('Mangler kategori',uncN+' stk.',uncN?kr(Math.abs(unc))+' i alt · <button class="btn ghost" style="padding:0 4px" type="button" data-act="openkat">kategorisér</button>':'Alt er på plads')+
   '</div>';
+  h+='<div class="row" style="gap:6px"><button class="btn ghost" type="button" data-act="ovcollall" data-v="1" style="padding:4px 10px">▸ Fold alle sammen</button><button class="btn ghost" type="button" data-act="ovcollall" data-v="0" style="padding:4px 10px">▾ Fold alle ud</button></div>';
   h+='<div class="tablewrap"><table class="ovt"><thead><tr><th>Kategori</th><th class="r">Budget</th><th class="r">Faktisk</th><th class="r">Rest</th><th style="width:28%">Forbrug</th><th>Status</th></tr></thead><tbody>';
   for(const g of grp()){const rows=rowsByG[g.id];if(!rows||!rows.length)continue;
     const gb=rows.reduce((s,r)=>s+r.b,0),ga=rows.reduce((s,r)=>s+r.a,0);
-    h+='<tr class="grp"><td>'+esc(g.name)+'</td><td class="r num" data-l="Budget">'+kr(gb)+'</td><td class="r num" data-l="Faktisk">'+kr(ga)+'</td><td class="r num" data-l="Rest">'+kr(gb-ga)+'</td><td></td><td></td></tr>';
+    const coll=!!ovColl()[g.id];h+='<tr class="grp"><td><button class="linkbtn" type="button" data-act="ovgrp" data-g="'+g.id+'" aria-expanded="'+!coll+'" style="font-weight:700"><span class="caret">'+(coll?'▸':'▾')+'</span>'+esc(g.name)+(coll?' <span class="muted" style="font-weight:400">'+rows.filter(r=>r.b||r.a).length+' poster</span>':'')+'</button></td><td class="r num" data-l="Budget">'+kr(gb)+'</td><td class="r num" data-l="Faktisk">'+kr(ga)+'</td><td class="r num" data-l="Rest">'+kr(gb-ga)+'</td><td></td><td></td></tr>';
     for(const r of rows){
+      if(coll)continue;
       const rest=r.b-r.a;const pct=r.b?r.a/r.b:(r.a?2:0);
       let pill='',cls='';
       if(r.t==='income'){pill=r.a>=r.b&&r.b?'<span class="pill ok">Modtaget</span>':r.b?'<span class="pill info">Afventer '+kr(r.b-r.a)+'</span>':''}
@@ -1836,6 +1840,8 @@ document.addEventListener('click',e=>{
     case 'resetxfer':{const p=planEdit();p.mad=null;p.div=null;p.save=null;markDirty('settings');renderAll(true);toast('Mad og Diverse følger budgettet');break}
     case 'brole':S.ui.bRole=a.dataset.r||'';renderAll(true);break;
     case 'addgoal':{S.settings.goals=S.settings.goals||[];const id='g'+Date.now().toString(36);S.settings.goals.push({id,name:'Nyt mål',cat:'diverse',start:0,pm:null,use:Array(12).fill(0)});markDirty('settings');renderAll(true);const i=document.getElementById('gn_'+id);if(i){i.focus();i.select()}break}
+    case 'ovgrp':{const c=ovColl();c[a.dataset.g]=!c[a.dataset.g];ovCollSave();renderAll(true);break}
+    case 'ovcollall':{const c=ovColl();for(const g of grp())c[g.id]=a.dataset.v==='1';ovCollSave();renderAll(true);break}
     case 'gtoggle':{S.ui.gOpen=S.ui.gOpen||{};S.ui.gOpen[a.dataset.g]=!S.ui.gOpen[a.dataset.g];renderAll(true);break}
     case 'delgoal':{S.settings.goals=(S.settings.goals||[]).filter(g=>g.id!==a.dataset.g);markDirty('settings');renderAll(true);toast('Målet er slettet');break}
     case 'ovrole':S.ui.ovRole=a.dataset.r||'';S.ui.ovOpen=null;renderAll(true);break;
