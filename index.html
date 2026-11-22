@@ -229,6 +229,8 @@ tr.ovdetail td{padding:0;background:var(--surface-2)}
   .row{gap:8px}
 }
 .nologin #katBtn,.nologin #tabs{display:none!important}
+.goalc{border-top:1px solid var(--line);margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.goalline{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px}
 .lnf{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
 .lncard{display:flex;flex-direction:column;gap:12px}
 .lnres{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:14px}
@@ -799,23 +801,28 @@ function vFordeling(){
     '<div class="tablewrap" style="margin-top:12px"><table class="xfer"><thead><tr>'+head+'</tr></thead><tbody>'+
     '<tr><td>Ind fra Nemkonto</td>'+cells(Array(12).fill(P.T))+'</tr><tr><td>Faste udgifter</td>'+cells(P.bud.map(v=>-v))+'</tr>'+
     '<tr class="tot"><td>Saldo ultimo</td>'+P.bsal.map(v=>'<td class="m has '+(v<0?'neg':'')+'">'+nf0.format(Math.round(v))+'</td>').join('')+'<td></td></tr></tbody></table></div></div>';
-  // Goals
-  const ecats=S.settings.cats.filter(c=>G(c.g).type==='expense');
-  h+='<div class="panel"><div class="row spread"><div><h2>Opsparingsmål</h2><p class="sub">Hver måned sættes beløbet ind på Opsparing. Når pengene skal bruges, flyttes de fra Opsparing til Diversekontoen, og købet betales derfra. Overførslen tæller ikke som udgift, kun selve købet. Skriv i månederne, hvornår pengene skal bruges.'+(P.saveManual?' Du har selv sat indbetalingerne under “Til Opsparing” ovenfor. De fordeles på målene efter deres behov pr. måned.':'')+'</p></div><button class="btn" type="button" data-act="addgoal">＋ Nyt mål</button></div>'+
-    '<div class="tablewrap grid" style="margin-top:12px"><table><thead><tr><th>Mål</th><th>Kategori</th><th class="r">Start</th><th class="r">'+(P.saveManual?'Behov pr. md.':'Pr. md.')+'</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'<th></th></tr></thead><tbody>';
-  for(const o of P.goals){const g=o.g;
-    h+='<tr><td><input class="name" id="gn_'+g.id+'" data-gf="name" data-g="'+g.id+'" value="'+esc(g.name)+'" aria-label="Navn på mål" style="min-width:130px"></td>'+
-      '<td><select id="gc_'+g.id+'" data-gf="cat" data-g="'+g.id+'" aria-label="Kategori for '+esc(g.name)+'">'+ecats.map(c=>'<option value="'+c.id+'"'+(c.id===g.cat?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></td>'+
-      '<td><input class="amt" id="gs_'+g.id+'" data-gf="start" data-g="'+g.id+'" inputmode="decimal" value="'+(+g.start?nf0.format(g.start):'')+'" placeholder="0" style="min-width:70px" aria-label="Startsaldo"></td>'+
-      '<td><input class="amt" id="gp_'+g.id+'" data-gf="pm" data-g="'+g.id+'" inputmode="decimal" value="'+(g.pm!=null&&g.pm!==''?nf0.format(g.pm):'')+'" placeholder="'+nf0.format(o.pm)+'" style="min-width:70px" aria-label="Pr. måned"></td>'+
-      o.use.slice(0,12).map((v,i)=>'<td class="m mi"><input class="amt mm" id="gu_'+g.id+'_'+i+'" data-gf="use" data-i="'+i+'" data-g="'+g.id+'" inputmode="decimal" value="'+(v?nf0.format(v):'')+'" placeholder="–" style="min-width:58px" aria-label="Brug i '+MONL[i]+'"></td>').join('')+
-      '<td><button class="x" type="button" data-act="delgoal" data-g="'+g.id+'" aria-label="Slet '+esc(g.name)+'">✕</button></td></tr>'+
-      '<tr><td colspan="4" class="muted" style="font-size:12.5px;padding-left:14px">Saldo ultimo</td>'+o.sal.map(v=>'<td class="m has '+(v<0?'neg':'')+'" style="font-size:12px">'+nf0.format(Math.round(v))+'</td>').join('')+'<td></td></tr>';}
-  const tot=Array(12).fill(0);P.goals.forEach(o=>o.sal.forEach((v,i)=>tot[i]+=v));
+  // Opsparingsmål – kort pr. mål; detaljer under "Ret"
+  const ecats=S.settings.cats.filter(c=>G(c.g).type==='expense');S.ui.gOpen=S.ui.gOpen||{};
+  const totPm=P.goals.reduce((s,o)=>s+o.pm,0),totUse=P.goals.reduce((s,o)=>s+o.use.reduce((a,v)=>a+v,0),0);
   const os=accList().filter(a=>accType(a.no)==='opsparing').map(a=>accSaldo(a.no)).filter(Boolean).reduce((s,x)=>s+x.s,0);
-  h+='<tr class="tot"><td colspan="4">Opsparing i alt, saldo ultimo</td>'+tot.map(v=>'<td class="m has '+(v<-0.5?'neg':'')+'">'+nf0.format(Math.round(v)||0)+'</td>').join('')+'<td></td></tr></tbody></table></div>'+
-    ((P.saveManual?P.potSal.some(v=>v<-0.5):P.goals.some(o=>o.sal.some(v=>v<-0.5)))?'<div class="callout warn" style="margin-top:12px"><p>Et mål går i minus i løbet af året. Hæv beløbet pr. måned eller skriv en startsaldo.</p></div>':'')+
-    (accList().some(a=>accType(a.no)==='opsparing')?'<p class="sub">Saldo på opsparingskonti i dag: <b class="num">'+kr(os)+'</b>. Fordel den som startsaldo på målene.</p>':'')+'</div>';
+  h+='<div class="panel"><div class="row spread"><div><h2>Opsparingsmål</h2><p class="sub">Penge, der skal bruges senere – fx ferie, fødselsdage og jul. Appen finder selv det faste beløb pr. måned, så pengene er der, når de skal bruges. Pengene til målene bliver stående og bruges ikke i Gældfri-planen.</p></div><button class="btn" type="button" data-act="addgoal">＋ Nyt mål</button></div>'+
+    '<div class="kpis" style="margin-top:12px">'+kpi('Til målene hver måned',kr(totPm),'Sættes ind på Opsparing')+kpi('Bruges på et år',kr(totUse),P.goals.length+(P.goals.length===1?' mål':' mål'))+
+    (accList().some(a=>accType(a.no)==='opsparing')?kpi('På opsparingskonti i dag',kr(os),'Skriv det som “Har allerede” på målene'):'')+'</div>';
+  for(const o of P.goals){const g=o.g;let b=+g.start||0;const sal=o.use.map(u=>b=b+o.pm-u);const low=Math.min(...sal);const lowI=sal.indexOf(low);const open=S.ui.gOpen[g.id];
+    const uses=o.use.map((u,i)=>({u,i})).filter(x=>x.u>0);
+    h+='<div class="goalc"><div class="row spread" style="gap:8px"><div class="row" style="gap:8px;flex:1 1 280px"><input class="inp gname" id="gn_'+g.id+'" data-gf="name" data-g="'+g.id+'" value="'+esc(g.name)+'" aria-label="Navn på mål" style="flex:1 1 140px;max-width:260px">'+
+      '<select class="inp" id="gc_'+g.id+'" data-gf="cat" data-g="'+g.id+'" aria-label="Kategori for '+esc(g.name)+'" style="padding:4px 8px">'+ecats.map(c=>'<option value="'+c.id+'"'+(c.id===g.cat?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div>'+
+      '<div class="row" style="gap:6px">'+(!uses.length?'<span class="pill info">Vælg måneder</span>':low<-0.5?'<span class="pill bad">Mangler '+kr(-low)+' i '+MONL[lowI]+'</span>':'<span class="pill ok">✓ Pengene er der til tiden</span>')+
+      '<button class="btn" type="button" data-act="gtoggle" data-g="'+g.id+'" style="padding:4px 10px">'+(open?'Luk':'Ret')+'</button><button class="x" type="button" data-act="delgoal" data-g="'+g.id+'" aria-label="Slet '+esc(g.name)+'">✕</button></div></div>'+
+      '<div class="goalline"><span><b class="num">'+kr(o.pm)+'</b> pr. md.'+(g.pm!=null&&g.pm!==''?'':' <span class="muted">(beregnet)</span>')+'</span><span>Bruges: '+(uses.length?uses.map(x=>'<b>'+MON[x.i]+'</b> '+nf0.format(x.u)).join(' · '):'<span class="muted">tryk Ret og skriv beløb i de måneder, pengene skal bruges</span>')+'</span>'+(+g.start?'<span class="muted">Har allerede '+kr(+g.start)+'</span>':'')+'</div>';
+    if(open)h+='<div class="tablewrap" style="margin-top:4px"><table class="xfer"><thead><tr><th>Har allerede</th><th>Pr. md.</th>'+MON.map(m=>'<th class="r">'+m+'</th>').join('')+'</tr></thead><tbody><tr>'+
+      '<td><input class="amt" id="gs_'+g.id+'" data-gf="start" data-g="'+g.id+'" inputmode="decimal" value="'+(+g.start?nf0.format(g.start):'')+'" placeholder="0" aria-label="Har allerede"></td>'+
+      '<td><input class="amt" id="gp_'+g.id+'" data-gf="pm" data-g="'+g.id+'" inputmode="decimal" value="'+(g.pm!=null&&g.pm!==''?nf0.format(g.pm):'')+'" placeholder="'+nf0.format(o.pm)+'" aria-label="Pr. måned (tom = beregnet)"></td>'+
+      o.use.slice(0,12).map((v,i)=>'<td class="m mi"><input class="amt mm" id="gu_'+g.id+'_'+i+'" data-gf="use" data-i="'+i+'" data-g="'+g.id+'" inputmode="decimal" value="'+(v?nf0.format(v):'')+'" placeholder="–" aria-label="Bruges i '+MONL[i]+'"></td>').join('')+'</tr>'+
+      '<tr><td colspan="2" class="muted" style="font-size:12.5px">Saldo sidst i måneden</td>'+sal.map(v=>'<td class="m has '+(v<-0.5?'neg':'')+'" style="font-size:12px">'+nf0.format(Math.round(v))+'</td>').join('')+'</tr></tbody></table></div>'+
+      '<p class="muted" style="font-size:12.5px;margin:0">Skriv beløbet i de måneder, pengene skal bruges. “Pr. md.” kan stå tom – så finder appen selv det beløb, der skal til.</p>';
+    h+='</div>'}
+  h+='</div>';
   // Kontokobling + kontrol
   h+='<div class="panel"><h2>Konti</h2><p class="sub">Hvilken konto hører til hvilket budget. Kontiene vælges af sig selv efter navn.</p><div class="row" style="gap:12px;margin-top:10px;flex-wrap:wrap">'+
     ROLES.map(x=>'<label class="field"><span class="label">'+x[1]+'</span><select id="rl_'+x[0]+'" class="inp" data-role="'+x[0]+'">'+(accList().length?'<option value="">Vælg konto</option>'+accList().map(a=>'<option value="'+esc(a.no)+'"'+(roleAcc(x[0])===a.no?' selected':'')+'>'+esc(a.name)+'</option>').join(''):'<option>Importér først</option>')+'</select></label>').join('')+'</div></div>';
@@ -1296,7 +1303,7 @@ function vExtras(p){
     '<div><button class="btn" type="button" data-act="exadd" data-id="'+p.id+'" style="padding:4px 10px">＋ Tilføj ekstra udbetaling</button></div></div>';
   const rows=P.out.map((o,i)=>({o,i})).filter(x=>x.o.fv||x.o.ex);
   if(rows.length)h+='<div style="display:flex;flex-direction:column;gap:4px"><span class="label">Udbetalinger i '+P.y+' (brutto → netto) · fritvalg '+String(P.pct).replace('.',',')+' %</span>'+rows.map(({o,i})=>'<div class="row spread" style="gap:6px;border-top:1px solid var(--line);padding-top:4px"><span>'+MONL[i]+'</span><span class="num" style="font-size:13px">'+(o.fv?'fritvalg '+nf0.format(Math.round(o.fv))+' → <b>'+nf0.format(Math.round(o.fvNet))+'</b>':'')+(o.fv&&o.ex?' · ':'')+(o.ex?'ekstra '+nf0.format(Math.round(o.ex))+' → <b>'+nf0.format(Math.round(o.exNet))+'</b>':'')+'</span></div>').join('')+
-    '<div class="muted" style="font-size:13px">Fritvalg optjent i '+P.y+': '+kr(P.yearAcc)+' brutto ≈ '+kr(P.yearNet)+' netto'+(p.fvLoan?' – går som ekstra afdrag, ca. '+kr(P.avgNet)+' pr. md i snit':'')+'.</div></div>';
+    '<div class="muted" style="font-size:13px">Fritvalg der optjenes i '+P.y+': '+kr(P.yearAcc)+' brutto · udbetales i '+P.y+': '+kr(P.yearNet)+' netto'+(p.fvLoan?' – går som ekstra afdrag, ca. '+kr(P.avgNet)+' pr. md i snit':'')+'.</div></div>';
   else if(P.pct&&!P.pay.length)h+='<div class="muted">Ingen udbetaling i '+P.y+(P.saldoEnd>0.5?' – '+kr(P.saldoEnd)+' står på fritvalgskontoen ved årets udgang':'')+'. Vælg måneder ovenfor.</div>';
   return h+'</div>';
 }
@@ -1314,6 +1321,7 @@ function gpCalc(priceOverride){
   const car=gp.useCar&&+po.price?po:null;const carApplied=!!(car&&po.applied);const gpStart=gp.start||addM(CUR,2);const carLoan=car&&S0.find(x=>x.l.car);
   const stopSum=car?(po.stopCats||[]).reduce((s,id)=>{const c=catById(id);return s+(c?curPay(c):0)},0):0;const fb=car?poFribil():0;
   let pool=Math.max(0,(+gp.cash||0)-(+gp.buffer||0));const rows=[];let freed=0,carEff=0;const fvMonthly=loans.reduce((s,l)=>s+fvExtraFor(l.id),0);
+  const goals=st.goals||[];const gpmv=goals.map(g=>gPm(g));const gbal=goals.map(g=>+g.start||0);
   const lumpInfo={};let ym=addM(CUR,1);
   for(let i=0;i<120;i++){
     const base=gp.monthly!=null&&gp.monthly!==''?+gp.monthly:budgetSurplus(ym);
@@ -1323,17 +1331,18 @@ function gpCalc(priceOverride){
     if(car&&ym===car.month){let rest=(+po.price||0)-(+po.saleCost||0);if(carLoan&&!carLoan.paid){rest-=carLoan.bal;carLoan.bal=0;carLoan.paid=ym;if(!carApplied)freed+=carLoan.pm}
       lump+=rest;if(!carApplied){carEff=stopSum-fb;inflow+=carEff}}
     pool+=inflow+lump;
+    {const m=mNum(ym);goals.forEach((g,k)=>{gbal[k]=Math.max(0,gbal[k]+gpmv[k]-(+(g.use||[])[m-1]||0))})}const earm=gbal.reduce((s,v)=>s+v,0);
     // faste ydelser og renter
     for(const x of S0){if(x.paid||x.bal<=0)continue;const it=x.bal*x.r;x.bal=x.bal+it-x.pm;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
     const pays={};let saving=null;
-    const avail=pool;
+    const avail=pool-earm;
     // engangsafdrag på lånene (betales af puljen)
-    for(const x of S0){if(x.paid||x.bal<=0){for(const q of (x.l.lumps||[]))if(q.ym===ym)lumpInfo[q.id]={done:true};continue}let once=0;for(const q of (x.l.lumps||[]))if(q.ym===ym){once+=+q.amt||0;lumpInfo[q.id]={avail:pool,after:pool-Math.min(+q.amt||0,x.bal)}}if(!once)continue;const p=Math.min(once,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
+    for(const x of S0){if(x.paid||x.bal<=0){for(const q of (x.l.lumps||[]))if(q.ym===ym)lumpInfo[q.id]={done:true};continue}let once=0;for(const q of (x.l.lumps||[]))if(q.ym===ym){once+=+q.amt||0;lumpInfo[q.id]={avail:pool-earm,after:pool-earm-Math.min(+q.amt||0,x.bal)}}if(!once)continue;const p=Math.min(once,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
     // ekstra afdrag i rækkefølge; lån med 'spar op' indfries først, når puljen dækker restgæld + omkostning
     if(ym>=gpStart)for(const x of S0.filter(z=>z.inPlan).sort((a,b)=>order.indexOf(a.l)-order.indexOf(b.l))){if(x.paid||x.bal<=0)continue;
-      if(lnSave(x.l)){const need=x.bal+(+x.l.cost||0);if(pool>=need){pool-=need;pays[x.l.id]=(pays[x.l.id]||0)+need;x.bal=0;x.paid=ym;freed+=x.pm;continue}saving={id:x.l.id,need,have:Math.max(0,pool)};break}
-      if(pool<=0)break;const p=Math.min(pool,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
-    rows.push({ym,base,inflow,lump,pays,saving,avail,adj:inflow-base,pool,debt:S0.filter(z=>z.inPlan).reduce((s,z)=>s+z.bal,0),bals:Object.fromEntries(S0.map(z=>[z.l.id,z.bal]))});
+      if(lnSave(x.l)){const need=x.bal+(+x.l.cost||0);if(pool-earm>=need){pool-=need;pays[x.l.id]=(pays[x.l.id]||0)+need;x.bal=0;x.paid=ym;freed+=x.pm;continue}saving={id:x.l.id,need,have:Math.max(0,pool-earm)};break}
+      if(pool-earm<=0)break;const p=Math.min(pool-earm,x.bal);x.bal-=p;pool-=p;pays[x.l.id]=(pays[x.l.id]||0)+p;if(x.bal<=0.5){x.bal=0;x.paid=ym;freed+=x.pm}}
+    rows.push({ym,base,inflow,lump,pays,saving,avail,earm,adj:inflow-base,pool,debt:S0.filter(z=>z.inPlan).reduce((s,z)=>s+z.bal,0),bals:Object.fromEntries(S0.map(z=>[z.l.id,z.bal]))});
     if(S0.filter(z=>z.inPlan).every(z=>z.paid)&&i>=2)break;
     ym=addM(ym,1);
   }
@@ -1348,7 +1357,7 @@ function gpChart(R){
   return s+'</svg>'}
 function vPlan(){
   const st=S.settings;const gp=gpObj();const loans=st.loans||[];const R=gpCalc();const months=Array.from({length:37},(_,i)=>addM(CUR,i+1));
-  let h='<div><h1>Gældfri-plan</h1><p class="sub">Alt, der er tilovers hver måned, bruges på lånene i den rækkefølge, du vælger. Når et lån er væk, går dets ydelse videre til det næste (sneboldmetoden). Overskuddet kommer fra dit budget, så ferie, gaver og andet er regnet med i de måneder, de koster.</p></div>';
+  let h='<div><h1>Gældfri-plan</h1><p class="sub">Alt, der er tilovers hver måned, bruges på lånene i den rækkefølge, du vælger. Når et lån er væk, går dets ydelse videre til det næste (sneboldmetoden). Overskuddet kommer fra dit budget, så ferie, gaver og andet er regnet med i de måneder, de koster. Pengene til opsparingsmålene (ferie, jul m.m. under Fordeling) bliver stående og bruges ikke på lånene.</p></div>';
   const miss=loans.filter(l=>gp.order.includes(l.id)&&(l.bal==null||l.bal===''));
   if(miss.length)h+='<div class="callout warn"><p>Skriv restgæld under <button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="laan">Lån</button> for: '+miss.map(l=>esc(l.name)).join(', ')+'.</p></div>';
   // resultat-kort
@@ -1382,7 +1391,7 @@ function vPlan(){
      sc.map(p=>{const X=gpCalc(p);return '<tr><td class="num">'+kr(p)+(R.po.price&&p===Math.round(p0/5000)*5000?' <span class="pill info">din pris</span>':'')+'</td>'+R.order.map(l=>{const z=X.S0.find(q=>q.l===l);return '<td>'+(z&&z.paid?mLabel(z.paid,true):'<span class="muted">senere</span>')+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div></section>'}
   h+='<section class="panel chart"><h2>Restgæld på planens lån</h2>'+gpChart(R)+'</section>';
   h+='<div class="tablewrap"><table class="gpt"><thead><tr><th>Måned</th><th class="r">Til lån</th><th>Ekstra afdrag</th><th class="r">Restgæld</th><th class="r">Pulje</th></tr></thead><tbody>'+
-    R.rows.map(r=>'<tr><td>'+mLabel(r.ym)+'</td><td class="r num '+(r.inflow+r.lump<0?'neg':'')+'">'+kr(r.inflow+r.lump)+(r.lump?'<div class="muted" style="font-size:11.5px">heraf engang '+kr(r.lump)+'</div>':'')+'</td><td style="font-size:13px">'+((Object.entries(r.pays).filter(([,v])=>v>0.5).map(([id,v])=>{const l=loans.find(q=>q.id===id)||{};return (lnSave(l)?'<b>Indfri</b> ':'')+esc(l.name||'')+' '+kr(v)}).join('<br>'))+(r.saving?'<div class="muted">Spar op til '+esc((loans.find(q=>q.id===r.saving.id)||{}).name||'')+': '+kr(r.saving.have)+' af '+kr(r.saving.need)+'</div>':'')||'<span class="muted">–</span>')+'</td><td class="r num">'+kr(r.debt)+'</td><td class="r num '+(r.pool<-0.5?'neg':'')+'">'+kr(r.pool)+(r.pool<-0.5?'<div style="font-size:11.5px">under bufferen</div>':'')+'</td></tr>').join('')+'</tbody></table></div>';
+    R.rows.map(r=>'<tr><td>'+mLabel(r.ym)+'</td><td class="r num '+(r.inflow+r.lump<0?'neg':'')+'">'+kr(r.inflow+r.lump)+(r.lump?'<div class="muted" style="font-size:11.5px">heraf engang '+kr(r.lump)+'</div>':'')+'</td><td style="font-size:13px">'+((Object.entries(r.pays).filter(([,v])=>v>0.5).map(([id,v])=>{const l=loans.find(q=>q.id===id)||{};return (lnSave(l)?'<b>Indfri</b> ':'')+esc(l.name||'')+' '+kr(v)}).join('<br>'))+(r.saving?'<div class="muted">Spar op til '+esc((loans.find(q=>q.id===r.saving.id)||{}).name||'')+': '+kr(r.saving.have)+' af '+kr(r.saving.need)+'</div>':'')||'<span class="muted">–</span>')+'</td><td class="r num">'+kr(r.debt)+'</td><td class="r num '+(r.pool<-0.5?'neg':'')+'">'+kr(r.pool)+(r.pool<-0.5?'<div style="font-size:11.5px">under bufferen</div>':'')+(r.earm>0.5?'<div class="muted" style="font-size:11.5px">heraf til mål '+kr(r.earm)+'</div>':'')+'</td></tr>').join('')+'</tbody></table></div>';
   h+='<p class="muted" style="font-size:13px">Overslag: renter regnes pr. måned, og overskuddet tager budgettet for gode varer. Er budgettet ikke opdateret med løn, fritvalg og bilsalg, så tryk først “Brug i budgettet” under Løn &amp; skat og “Gennemfør” under Lån – eller skriv et fast beløb i “Til lån hver måned”.</p>';
   return h;
 }
@@ -1408,7 +1417,7 @@ function vStatus(){
   const last=allTx().reduce((m,x)=>x.d>m?x.d:m,'');if(last&&dayNo(CUR+'-'+pad(TODAY.getDate()))-dayNo(last)>35)items.push(['info','Seneste bankpost er fra '+last.split('-').reverse().join('-')+' – importér en ny bankfil på pc’en','tab','import']);
   let g='';
   if(gp&&gp.order.length&&loans.some(l=>gp.order.includes(l.id)&&l.bal!=null&&l.bal!=='')){const R=gpCalc();const n0=R.rows[0];
-    g='<div class="kpis">'+R.order.map(l=>{const z=R.S0.find(q=>q.l===l);return kpi(esc(l.name),z&&z.paid?'Væk '+mLabel(z.paid):'–','Restgæld i dag '+kr(+l.bal||0),z&&z.paid?'pos':'')}).join('')+
+    g='<div class="kpis">'+R.order.map(l=>{const z=R.S0.find(q=>q.l===l);return kpi(esc(l.name),z&&z.paid?(lnSave(l)?'Indfries ':'Væk ')+mLabel(z.paid):'–','Restgæld i dag '+kr(+l.bal||0),z&&z.paid?'pos':'')}).join('')+
       (n0?kpi('Ekstra afdrag i '+MONL[mNum(n0.ym)-1],kr(Object.values(n0.pays).reduce((s,v)=>s+v,0)),'<button class="btn ghost" style="padding:0 4px" type="button" data-act="tab" data-tab="plan">se planen ›</button>'):'')+'</div>'}
   return '<section class="panel" style="display:flex;flex-direction:column;gap:10px"><h2>Status</h2>'+g+
     (items.length?'<div style="display:flex;flex-direction:column;gap:6px">'+items.map(([k,txt,act,tab])=>'<div class="row spread" style="border-top:1px solid var(--line);padding-top:6px;gap:8px"><span><span class="pill '+(k==='warn'?'warn':'info')+'">'+(k==='warn'?'Gør nu':'Tip')+'</span> '+esc(txt)+'</span><button class="btn" type="button" data-act="'+act+'"'+(tab?' data-tab="'+tab+'"':'')+' style="padding:4px 10px">Gå til ›</button></div>').join('')+'</div>':'<p class="pos" style="margin:0">✓ Alt er opdateret.</p>')+'</section>'}
@@ -1770,6 +1779,7 @@ document.addEventListener('click',e=>{
     case 'resetxfer':{const p=S.settings.plan=S.settings.plan||{};delete p.mad;delete p.div;delete p.save;markDirty('settings');renderAll(true);toast('Mad og Diverse følger budgettet');break}
     case 'brole':S.ui.bRole=a.dataset.r||'';renderAll(true);break;
     case 'addgoal':{S.settings.goals=S.settings.goals||[];const id='g'+Date.now().toString(36);S.settings.goals.push({id,name:'Nyt mål',cat:'diverse',start:0,pm:null,use:Array(12).fill(0)});markDirty('settings');renderAll(true);const i=document.getElementById('gn_'+id);if(i){i.focus();i.select()}break}
+    case 'gtoggle':{S.ui.gOpen=S.ui.gOpen||{};S.ui.gOpen[a.dataset.g]=!S.ui.gOpen[a.dataset.g];renderAll(true);break}
     case 'delgoal':{S.settings.goals=(S.settings.goals||[]).filter(g=>g.id!==a.dataset.g);markDirty('settings');renderAll(true);toast('Målet er slettet');break}
     case 'ovrole':S.ui.ovRole=a.dataset.r||'';S.ui.ovOpen=null;renderAll(true);break;
     case 'ytd1':S.ui.ytd=true;renderAll(true);break;
